@@ -203,7 +203,7 @@
         <summary><span data-i18n="postInstall">登录后的后续操作</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
         <div class="post-install">
           <article data-post-language="zh" lang="zh-CN">
-<p>先登录临时账户，创建并验证自己的管理员，再删除临时账户。如需手动修复，再关闭 SIP、处理标记和 hosts，完成后恢复 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；正常完成后无需重复执行。需要手动核对或修复时，再使用下面的命令。</p>
+<p>先登录临时账户，创建并验证自己的管理员，再删除临时账户。接着关闭 SIP、按下文处理配置标记和注册服务、补齐 hosts 扩展屏蔽列表，完成后恢复 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；下文还包括禁用注册服务和补齐六域名名单的步骤。</p>
 <h3>1. 关闭 SIP 前：先替换临时管理员账号</h3>
 <p><strong>先创建并验证自己的管理员，再删除临时 <code>apple</code>；不要先删除唯一可用账号。</strong></p>
 <ol>
@@ -220,7 +220,7 @@ sudo diskutil apfs listUsers /
 </code></pre>
 <p>核对当前账号的 Token 状态，以及其 GUID 对应的卷所有权。如果授权不满足，先按 Apple 流程处理，保留可用账号，不要反复删建或继续关闭 SIP。参考 <a href="https://support.apple.com/guide/mac-help/mh15191/mac">Apple：添加用户</a>、<a href="https://support.apple.com/guide/mac-help/mchlp1557/mac">删除用户</a>及 <a href="https://support.apple.com/guide/deployment/dep24dbdcf9e/web">Secure Token 与卷所有权</a>。</p>
 <h3>2. 手动修复前：先关闭 SIP</h3>
-<p>如果要按本节在已启动的系统中手动修复，先按以下步骤关闭 SIP；已经显示 <code>disabled</code> 时可跳过关闭步骤。正常完成脚本后不需要重复修复，也不需要为了重复操作而关闭 SIP。</p>
+<p>按本节在已启动的系统中进行后续配置前，先按以下步骤关闭 SIP；已经显示 <code>disabled</code> 时可跳过关闭步骤。</p>
 <ol>
 <li>将 Mac 关机，长按电源键进入启动选项，选择“选项”→“继续”。</li>
 <li>在恢复模式打开“实用工具”→“终端”，执行：</li>
@@ -235,21 +235,21 @@ sudo diskutil apfs listUsers /
 </code></pre>
 <p><code>csrutil disable</code> 在恢复模式中执行；<code>csrutil status</code> 可在系统终端检查。脚本不会代你切换 SIP。后续操作完成后，按第 5 节重新开启 SIP。操作方式参考 <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple：配置 SIP</a>。</p>
 <h3>3. 核对或修复配置标记</h3>
-<p>先按第 2 节关闭 SIP 并登录系统，再执行所需的手动修复；完成后按第 5 节恢复。出现 <code>Operation not permitted</code> 等错误时先停止并核实权限。</p>
-<p>需要手动修复时，先备份现有配置，再将以下命令粘贴到系统终端执行。<code>sudo</code> 会要求输入当前管理员密码，输入时不显示字符：</p>
-<pre><code class="language-bash">sudo cp -Rp /var/db/ConfigurationProfiles/Settings &quot;/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &amp;&amp;
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &amp;&amp;
-sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
+<p>先按第 2 节关闭 SIP 并登录系统，在系统终端依次执行下面 5 条命令。<code>sudo</code> 会要求输入当前管理员密码，输入时不显示字符：</p>
+<pre><code class="language-text">sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord
+sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled
 sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+sudo launchctl disable system/com.apple.ManagedClient.enroll
 </code></pre>
-<p>这四项操作是删除前两个标记，并确保后两个标记存在。<strong><code>touch</code> 不会清空已有内容，也不会把文件设成只读。</strong> 如果明确需要把后两个标记清空并设为普通权限只读，可在备份后另执行以下命令；它会覆盖这两个标记的现有内容：</p>
-<pre><code class="language-bash">sudo sh -c ': &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
-: &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &amp;&amp;
-chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+<p>执行命令检查结果：</p>
+<pre><code class="language-text">sudo profiles show -type enrollment
 </code></pre>
-<p><code>444</code> 只是文件权限上的只读，不等于不可删除或不可重建，也不能据此保证 OTA 后不会再次出现注册提示。配置备份可能包含设备管理信息，请妥善保管。</p>
-<h3>4. 可选：编辑 hosts 扩展屏蔽列表</h3>
+<p>可能出现类似错误：</p>
+<pre><code class="language-text">Error fetching Device Enrollment configuration: (34000) Error Domain=MCCloudConfigurationErrorDomain Code=34000 &quot;The device failed to request configuration from the cloud.&quot; UserInfo={NSLocalizedDescription=The device failed to request configuration from the cloud., CloudConfigurationErrorType=CloudConfigurationFatalError}
+</code></pre>
+<p>该提示表示本次未能从云端获取设备注册配置。网络屏蔽等情况也可能导致请求失败，不能仅凭错误码 <code>34000</code> 判断已解除监管或组织端设备归属；组织端释放需由有权限的管理员操作，参见 <a href="https://support.apple.com/en-gb/guide/business/axmec4d28461/web">Apple：释放设备</a>。完成后继续第 4 节，最后按第 5 节恢复 SIP。</p>
+<h3>4. 编辑 hosts 扩展屏蔽列表</h3>
 <p>默认脚本已经添加 <code>iprofiles.apple.com</code>、<code>mdmenrollment.apple.com</code>、<code>deviceenrollment.apple.com</code>。扩展名单含有其他用途的 Apple 服务；按 <a href="https://support.apple.com/en-us/101555">Apple 联网清单</a>，需要区分以下用途：</p>
 <div class="post-table"><table>
 <thead>
@@ -277,7 +277,7 @@ chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /v
 </tr>
 </tbody>
 </table></div>
-<p>需要使用下面这份六域名名单时，先备份 hosts，再以管理员权限打开编辑器：</p>
+<p>接着补齐下面的六域名名单。先备份 hosts，再以管理员权限打开编辑器：</p>
 <pre><code class="language-bash">sudo cp -p /etc/hosts &quot;/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
 sudo vi /etc/hosts
 </code></pre>
@@ -309,7 +309,7 @@ sudo killall -HUP mDNSResponder
 <p>若 App Store 下载的 iPhone/iPad 应用提示启动安全策略不满足，先恢复 SIP，并按应用或系统提示检查启动安全策略；不能仅凭应用打不开就判断是 SIP 导致。命令及重启要求可参考 <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple：配置 SIP</a>。</p>
           </article>
           <article data-post-language="en" lang="en" hidden>
-<p>Sign in with the temporary account, create and verify your own administrator, then remove the temporary account. For any manual repair, disable SIP afterward, repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.</p>
+<p>Sign in with the temporary account, create and verify your own administrator, then remove the temporary account. Next, disable SIP, follow the configuration-marker and enrollment-service steps below, complete the extended hosts blocklist, and re-enable SIP. The script already handles four configuration markers on the offline Data volume and adds three enrollment hosts; the steps below also disable the enrollment service and complete the six-host list.</p>
 <h3>1. Before changing SIP: replace the temporary administrator</h3>
 <p><strong>Create and verify your own administrator before removing temporary account <code>apple</code>. Do not delete your only usable account first.</strong></p>
 <ol>
@@ -326,7 +326,7 @@ sudo diskutil apfs listUsers /
 </code></pre>
 <p>Check the current account's token state and the ownership associated with its GUID. Resolve missing authorization through Apple's documented procedures before further SIP changes; retain usable accounts instead of repeatedly deleting and recreating them. See Apple's guides for <a href="https://support.apple.com/guide/mac-help/mh15191/mac">adding users</a>, <a href="https://support.apple.com/guide/mac-help/mchlp1557/mac">deleting users</a>, and <a href="https://support.apple.com/guide/deployment/dep24dbdcf9e/web">tokens and volume ownership</a>.</p>
 <h3>2. Before manual repair: disable SIP</h3>
-<p>If you intend to perform the manual repair below in the booted system, disable SIP first using these steps. Skip the disabling step if it already reports <code>disabled</code>. A successful script run does not require repeating repairs or disabling SIP just to repeat them.</p>
+<p>Before performing the following configuration steps in the booted system, disable SIP using these steps. Skip the disabling step if it already reports <code>disabled</code>.</p>
 <ol>
 <li>Shut down, hold the power button for startup options, and choose Options → Continue.</li>
 <li>In Recovery, open Utilities → Terminal and run:</li>
@@ -341,21 +341,21 @@ sudo diskutil apfs listUsers /
 </code></pre>
 <p>Run <code>csrutil disable</code> in Recovery; <code>csrutil status</code> can check the state in the normal system. The script does not switch SIP for you. Re-enable it in section 5 after completing the work. See <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple's SIP configuration guide</a>.</p>
 <h3>3. Inspect or repair configuration markers</h3>
-<p>Disable SIP and sign in as described in section 2, perform the needed manual repair, then restore SIP in section 5. Stop and check permissions if a command reports <code>Operation not permitted</code>.</p>
-<p>For manual repair, back up the existing configuration and paste the following into the normal system Terminal. <code>sudo</code> asks for your current administrator password; typed characters remain hidden:</p>
-<pre><code class="language-bash">sudo cp -Rp /var/db/ConfigurationProfiles/Settings &quot;/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &amp;&amp;
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &amp;&amp;
-sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
+<p>Disable SIP and sign in as described in section 2, then run these five commands in order in the normal system Terminal. <code>sudo</code> asks for your current administrator password; typed characters remain hidden:</p>
+<pre><code class="language-text">sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord
+sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled
 sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+sudo launchctl disable system/com.apple.ManagedClient.enroll
 </code></pre>
-<p>The four marker operations remove the first two files and ensure the other two exist. <strong><code>touch</code> neither empties existing files nor makes them read-only.</strong> If you specifically need empty markers with ordinary read-only permissions, run the following after backing up; it overwrites the existing contents of those two markers:</p>
-<pre><code class="language-bash">sudo sh -c ': &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
-: &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &amp;&amp;
-chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+<p>Run this command to check the result:</p>
+<pre><code class="language-text">sudo profiles show -type enrollment
 </code></pre>
-<p>Mode <code>444</code> is an ordinary file permission, not protection against deletion or recreation. It does not guarantee that enrollment prompts cannot return after OTA updates. Keep configuration backups private.</p>
-<h3>4. Optional: extend the hosts blocklist</h3>
+<p>You may see an error similar to:</p>
+<pre><code class="language-text">Error fetching Device Enrollment configuration: (34000) Error Domain=MCCloudConfigurationErrorDomain Code=34000 &quot;The device failed to request configuration from the cloud.&quot; UserInfo={NSLocalizedDescription=The device failed to request configuration from the cloud., CloudConfigurationErrorType=CloudConfigurationFatalError}
+</code></pre>
+<p>This message means the current request could not fetch the device enrollment configuration from the cloud. Network blocking can also cause request failures, so error <code>34000</code> alone does not prove that management or organization-side ownership has been removed. Organization-side release requires an authorized administrator; see <a href="https://support.apple.com/en-gb/guide/business/axmec4d28461/web">Apple: Release devices</a>. Continue with section 4, then re-enable SIP in section 5.</p>
+<h3>4. Extend the hosts blocklist</h3>
 <p>The default script already adds <code>iprofiles.apple.com</code>, <code>mdmenrollment.apple.com</code>, and <code>deviceenrollment.apple.com</code>. The extended list includes Apple services with other purposes. See <a href="https://support.apple.com/en-us/101555">Apple's network requirements</a>:</p>
 <div class="post-table"><table>
 <thead>
@@ -383,7 +383,7 @@ chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /v
 </tr>
 </tbody>
 </table></div>
-<p>If you choose to use the following six-host list, back up hosts and open the editor with administrator privileges:</p>
+<p>Next, complete the following six-host list. Back up hosts and open the editor with administrator privileges:</p>
 <pre><code class="language-bash">sudo cp -p /etc/hosts &quot;/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
 sudo vi /etc/hosts
 </code></pre>

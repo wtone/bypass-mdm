@@ -106,7 +106,7 @@ bash /tmp/bypass-mdm-v3.sh --lang en
 
 ## 6. 进入系统后的后续操作
 
-先登录临时账户，创建并验证自己的管理员，再删除临时账户。如需手动修复，再关闭 SIP、处理标记和 hosts，完成后恢复 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；正常完成后无需重复执行。需要手动核对或修复时，再使用下面的命令。
+先登录临时账户，创建并验证自己的管理员，再删除临时账户。接着关闭 SIP、按下文处理配置标记和注册服务、补齐 hosts 扩展屏蔽列表，完成后恢复 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；下文还包括禁用注册服务和补齐六域名名单的步骤。
 
 ### 6.1 关闭 SIP 前：先替换临时管理员账号
 
@@ -130,7 +130,7 @@ sudo diskutil apfs listUsers /
 
 ### 6.2 手动修复前：先关闭 SIP
 
-如果要按本节在已启动的系统中手动修复，先按以下步骤关闭 SIP；已经显示 `disabled` 时可跳过关闭步骤。正常完成脚本后不需要重复修复，也不需要为了重复操作而关闭 SIP。
+按本节在已启动的系统中进行后续配置前，先按以下步骤关闭 SIP；已经显示 `disabled` 时可跳过关闭步骤。
 
 1. 将 Mac 关机，长按电源键进入启动选项，选择“选项”→“继续”。
 2. 在恢复模式打开“实用工具”→“终端”，执行：
@@ -150,29 +150,31 @@ csrutil status
 
 ### 6.3 核对或修复配置标记
 
-先按第 6.2 节关闭 SIP 并登录系统，再执行所需的手动修复；完成后按第 6.5 节恢复。出现 `Operation not permitted` 等错误时先停止并核实权限。
+先按第 6.2 节关闭 SIP 并登录系统，在系统终端依次执行下面 5 条命令。`sudo` 会要求输入当前管理员密码，输入时不显示字符：
 
-需要手动修复时，先备份现有配置，再将以下命令粘贴到系统终端执行。`sudo` 会要求输入当前管理员密码，输入时不显示字符：
-
-```bash
-sudo cp -Rp /var/db/ConfigurationProfiles/Settings "/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)" &&
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &&
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &&
-sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
+```text
+sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord
+sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled
 sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+sudo launchctl disable system/com.apple.ManagedClient.enroll
 ```
 
-这四项操作是删除前两个标记，并确保后两个标记存在。**`touch` 不会清空已有内容，也不会把文件设成只读。** 如果明确需要把后两个标记清空并设为普通权限只读，可在备份后另执行以下命令；它会覆盖这两个标记的现有内容：
+执行命令检查结果：
 
-```bash
-sudo sh -c ': > /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
-: > /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &&
-chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+```text
+sudo profiles show -type enrollment
 ```
 
-`444` 只是文件权限上的只读，不等于不可删除或不可重建，也不能据此保证 OTA 后不会再次出现注册提示。配置备份可能包含设备管理信息，请妥善保管。
+可能出现类似错误：
 
-### 6.4 可选：编辑 hosts 扩展屏蔽列表
+```text
+Error fetching Device Enrollment configuration: (34000) Error Domain=MCCloudConfigurationErrorDomain Code=34000 "The device failed to request configuration from the cloud." UserInfo={NSLocalizedDescription=The device failed to request configuration from the cloud., CloudConfigurationErrorType=CloudConfigurationFatalError}
+```
+
+该提示表示本次未能从云端获取设备注册配置。网络屏蔽等情况也可能导致请求失败，不能仅凭错误码 `34000` 判断已解除监管或组织端设备归属；组织端释放需由有权限的管理员操作，参见 [Apple：释放设备](https://support.apple.com/en-gb/guide/business/axmec4d28461/web)。完成后继续第 6.4 节，最后按第 6.5 节恢复 SIP。
+
+### 6.4 编辑 hosts 扩展屏蔽列表
 
 默认脚本已经添加 `iprofiles.apple.com`、`mdmenrollment.apple.com`、`deviceenrollment.apple.com`。扩展名单含有其他用途的 Apple 服务；按 [Apple 联网清单](https://support.apple.com/en-us/101555)，需要区分以下用途：
 
@@ -183,7 +185,7 @@ chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /v
 | `albert.apple.com` | 设备激活；屏蔽可能影响正常激活 |
 | `acmdm.apple.com` | 扩展项；本次所查官方清单中未确认其具体用途 |
 
-需要使用下面这份六域名名单时，先备份 hosts，再以管理员权限打开编辑器：
+接着补齐下面的六域名名单。先备份 hosts，再以管理员权限打开编辑器：
 
 ```bash
 sudo cp -p /etc/hosts "/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)" &&

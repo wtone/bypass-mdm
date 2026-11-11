@@ -106,7 +106,7 @@ The temporary account is for initial access, with fixed password `1234`. Choose 
 
 ## 6. Follow-up after signing in
 
-Sign in with the temporary account, create and verify your own administrator, then remove the temporary account. For any manual repair, disable SIP afterward, repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.
+Sign in with the temporary account, create and verify your own administrator, then remove the temporary account. Next, disable SIP, follow the configuration-marker and enrollment-service steps below, complete the extended hosts blocklist, and re-enable SIP. The script already handles four configuration markers on the offline Data volume and adds three enrollment hosts; the steps below also disable the enrollment service and complete the six-host list.
 
 ### 6.1 Before changing SIP: replace the temporary administrator
 
@@ -130,7 +130,7 @@ Check the current account's token state and the ownership associated with its GU
 
 ### 6.2 Before manual repair: disable SIP
 
-If you intend to perform the manual repair below in the booted system, disable SIP first using these steps. Skip the disabling step if it already reports `disabled`. A successful script run does not require repeating repairs or disabling SIP just to repeat them.
+Before performing the following configuration steps in the booted system, disable SIP using these steps. Skip the disabling step if it already reports `disabled`.
 
 1. Shut down, hold the power button for startup options, and choose Options → Continue.
 2. In Recovery, open Utilities → Terminal and run:
@@ -150,29 +150,31 @@ Run `csrutil disable` in Recovery; `csrutil status` can check the state in the n
 
 ### 6.3 Inspect or repair configuration markers
 
-Disable SIP and sign in as described in section 6.2, perform the needed manual repair, then restore SIP in section 6.5. Stop and check permissions if a command reports `Operation not permitted`.
+Disable SIP and sign in as described in section 6.2, then run these five commands in order in the normal system Terminal. `sudo` asks for your current administrator password; typed characters remain hidden:
 
-For manual repair, back up the existing configuration and paste the following into the normal system Terminal. `sudo` asks for your current administrator password; typed characters remain hidden:
-
-```bash
-sudo cp -Rp /var/db/ConfigurationProfiles/Settings "/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)" &&
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &&
-sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &&
-sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
+```text
+sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord
+sudo rm /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled
 sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+sudo launchctl disable system/com.apple.ManagedClient.enroll
 ```
 
-The four marker operations remove the first two files and ensure the other two exist. **`touch` neither empties existing files nor makes them read-only.** If you specifically need empty markers with ordinary read-only permissions, run the following after backing up; it overwrites the existing contents of those two markers:
+Run this command to check the result:
 
-```bash
-sudo sh -c ': > /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
-: > /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &&
-chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+```text
+sudo profiles show -type enrollment
 ```
 
-Mode `444` is an ordinary file permission, not protection against deletion or recreation. It does not guarantee that enrollment prompts cannot return after OTA updates. Keep configuration backups private.
+You may see an error similar to:
 
-### 6.4 Optional: extend the hosts blocklist
+```text
+Error fetching Device Enrollment configuration: (34000) Error Domain=MCCloudConfigurationErrorDomain Code=34000 "The device failed to request configuration from the cloud." UserInfo={NSLocalizedDescription=The device failed to request configuration from the cloud., CloudConfigurationErrorType=CloudConfigurationFatalError}
+```
+
+This message means the current request could not fetch the device enrollment configuration from the cloud. Network blocking can also cause request failures, so error `34000` alone does not prove that management or organization-side ownership has been removed. Organization-side release requires an authorized administrator; see [Apple: Release devices](https://support.apple.com/en-gb/guide/business/axmec4d28461/web). Continue with section 6.4, then re-enable SIP in section 6.5.
+
+### 6.4 Extend the hosts blocklist
 
 The default script already adds `iprofiles.apple.com`, `mdmenrollment.apple.com`, and `deviceenrollment.apple.com`. The extended list includes Apple services with other purposes. See [Apple's network requirements](https://support.apple.com/en-us/101555):
 
@@ -183,7 +185,7 @@ The default script already adds `iprofiles.apple.com`, `mdmenrollment.apple.com`
 | `albert.apple.com` | Device activation; blocking may affect activation |
 | `acmdm.apple.com` | Additional host; its specific purpose was not confirmed in the official list reviewed |
 
-If you choose to use the following six-host list, back up hosts and open the editor with administrator privileges:
+Next, complete the following six-host list. Back up hosts and open the editor with administrator privileges:
 
 ```bash
 sudo cp -p /etc/hosts "/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)" &&
