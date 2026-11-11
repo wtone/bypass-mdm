@@ -111,7 +111,109 @@ Username: 1–31 characters, starting with an ASCII letter, using only letters, 
 
 Password: defaults to `1234`. There are no strength checks for length, character classes, or inclusion of the username; any custom password is accepted by the script. Empty input selects the default rather than an empty password. Save custom passwords securely; their contents are not displayed. `1234` is weak: change it after signing in. If the macOS password-setting command rejects a password, the script reports an error and stops.
 
-## 6. Optional arguments
+## 6. Follow-up after signing in
+
+For the manual follow-up flow, disable SIP in Recovery first, sign in to repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.
+
+### 6.1 Before manual repair: disable SIP
+
+If you intend to perform the manual repair below in the booted system, disable SIP first using these steps. Skip the disabling step if it already reports `disabled`. A successful script run does not require repeating repairs or disabling SIP just to repeat them.
+
+1. Shut down, hold the power button for startup options, and choose Options → Continue.
+2. In Recovery, open Utilities → Terminal and run:
+
+```bash
+csrutil disable
+```
+
+3. Complete the requested confirmation or authentication, then restart from the Apple menu and sign in to macOS.
+4. In the normal system Terminal, run the following and confirm that it reports `disabled` before continuing:
+
+```bash
+csrutil status
+```
+
+Run `csrutil disable` in Recovery; `csrutil status` can check the state in the normal system. The script does not switch SIP for you. Re-enable it in section 6.4 after completing the work. See [Apple's SIP configuration guide](https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html).
+
+### 6.2 Inspect or repair configuration markers
+
+Disable SIP and sign in as described in section 6.1, perform the needed manual repair, then restore SIP in section 6.4. Stop and check permissions if a command reports `Operation not permitted`.
+
+For manual repair, back up the existing configuration and paste the following into the normal system Terminal. `sudo` asks for your current administrator password; typed characters remain hidden:
+
+```bash
+sudo cp -Rp /var/db/ConfigurationProfiles/Settings "/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)" &&
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &&
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &&
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+```
+
+The four marker operations remove the first two files and ensure the other two exist. **`touch` neither empties existing files nor makes them read-only.** If you specifically need empty markers with ordinary read-only permissions, run the following after backing up; it overwrites the existing contents of those two markers:
+
+```bash
+sudo sh -c ': > /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
+: > /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &&
+chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+```
+
+Mode `444` is an ordinary file permission, not protection against deletion or recreation. It does not guarantee that enrollment prompts cannot return after OTA updates. Keep configuration backups private.
+
+### 6.3 Optional: extend the hosts blocklist
+
+The default script already adds `iprofiles.apple.com`, `mdmenrollment.apple.com`, and `deviceenrollment.apple.com`. The extended list includes Apple services with other purposes. See [Apple's network requirements](https://support.apple.com/en-us/101555):
+
+| Host | Purpose and effect |
+|---|---|
+| `iprofiles.apple.com`, `mdmenrollment.apple.com`, `deviceenrollment.apple.com` | Enrollment services, already included by default |
+| `gdmf.apple.com` | Update catalogs and managed-update queries; blocking may affect update checks |
+| `albert.apple.com` | Device activation; blocking may affect activation |
+| `acmdm.apple.com` | Additional host; its specific purpose was not confirmed in the official list reviewed |
+
+If you choose to use the following six-host list, back up hosts and open the editor with administrator privileges:
+
+```bash
+sudo cp -p /etc/hosts "/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)" &&
+sudo vi /etc/hosts
+```
+
+Use an English input method. Press `Esc`, then `G` to reach the last line, then lowercase `o` to open a new line at the end in insert mode. Preserve existing content and add only entries that are not already present:
+
+```text
+0.0.0.0 iprofiles.apple.com
+0.0.0.0 mdmenrollment.apple.com
+0.0.0.0 deviceenrollment.apple.com
+0.0.0.0 gdmf.apple.com
+0.0.0.0 acmdm.apple.com
+0.0.0.0 albert.apple.com
+```
+
+Press `Esc`, type `:wq`, and press Return to save and exit. Use `:q!` to exit without saving. To refresh DNS caches if needed:
+
+```bash
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
+
+This list differs from `--domains xiaohu-six`, which includes `deviceservices-external.apple.com` and excludes `gdmf.apple.com`. These are manual instructions; the script's default host selection stays the same. If added blocks cause update-check or activation issues, remove the relevant new entries or restore your backup before retrying. Keep backups and review the actual state after OTA updates; these settings do not guarantee that prompts will never return.
+
+### 6.4 Re-enable SIP
+
+If you previously disabled SIP, restore it after completing the necessary work. If `csrutil status` already reports `enabled`, leave it enabled.
+
+1. Shut down, hold the power button for startup options, and choose Options → Continue.
+2. In Recovery, open Utilities → Terminal and run:
+
+```bash
+csrutil enable
+```
+
+3. Complete the requested authentication and restart from the Apple menu.
+4. After signing in, run `csrutil status` again and confirm that it reports `enabled`.
+
+If an iPhone/iPad app from the App Store reports an incompatible startup security policy, restore SIP and follow the app or system guidance for startup security settings. An app failing to open is not, by itself, proof of a SIP issue. See [Apple's SIP configuration guide](https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html) for the commands and restart requirement.
+
+## 7. Optional arguments
 
 | Argument | Usage |
 |---|---|
@@ -129,7 +231,7 @@ To select six hosts, append `--domains xiaohu-six` to the execution command.
 
 You can still specify all targets with `--system`, `--data`, and `--username`. Providing all three without `--apply` remains check-only. Interactive selection requires a terminal: download the file and run it directly instead of using `curl ... | bash`.
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 | Problem | Action |
 |---|---|

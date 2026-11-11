@@ -80,6 +80,18 @@
     .steps li::before { content: counter(steps, decimal-leading-zero); position: absolute; left: 2px; top: 5px; color: #8ba08d; font: 10px ui-monospace, Consolas, monospace; }
     .steps strong { font-size: 12px; color: #42604c; font-weight: 600; }
     .steps p { margin: 6px 0 0; color: #809081; font-size: 12px; line-height: 1.85; }
+    .post-install { padding: 0 2px 22px; min-width: 0; }
+    .post-install [hidden] { display: none; }
+    .post-install h3 { margin: 23px 0 10px; font-size: 13px; color: #42604c; }
+    .post-install p, .post-install li { color: #6e8173; font-size: 12px; line-height: 1.9; }
+    .post-install ol { padding-left: 22px; }
+    .post-install a { color: #2d7b65; text-decoration: underline; text-underline-offset: 3px; }
+    .post-install code { font: 11px/1.8 ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap: anywhere; }
+    .post-install pre { padding: 14px; margin: 13px 0; max-width: 100%; overflow: auto; background: #eaf1ec; border: 1px solid #dae5dd; border-radius: 8px; }
+    .post-install pre code { white-space: pre; overflow-wrap: normal; word-break: normal; }
+    .post-table { max-width: 100%; overflow-x: auto; }
+    .post-install table { width: 100%; border-collapse: collapse; color: #6e8173; font-size: 11px; line-height: 1.8; }
+    .post-install th, .post-install td { padding: 9px; border: 1px solid #dce5dd; text-align: left; }
     .defaults { padding: 22px 0 5px; display: flex; justify-content: center; flex-wrap: wrap; gap: 9px 24px; color: #849486; font-size: 11px; }
     .defaults b { color: #56725b; font-weight: 550; margin-left: 6px; }
     .footnote { max-width: 650px; margin: 12px auto 0; color: #97a398; font-size: 10px; line-height: 1.9; text-align: center; }
@@ -186,6 +198,193 @@
         </ol>
         <p style="margin: 0 0 22px"><a class="text-link" id="readmeLink" href="https://github.com/wtone/bypass-mdm/blob/main/README.md" target="_blank" rel="noopener noreferrer"><span data-i18n="fullGuide">查看完整使用说明</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
       </details>
+      <details id="postInstallGuide">
+        <summary><span data-i18n="postInstall">登录后的后续操作</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+        <div class="post-install">
+          <article data-post-language="zh" lang="zh-CN">
+<p>手动后续流程为：先在恢复模式关闭 SIP，再登录系统处理标记和 hosts，完成后重新开启 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；正常完成后无需重复执行。需要手动核对或修复时，再使用下面的命令。</p>
+<h3>1. 手动修复前：先关闭 SIP</h3>
+<p>如果要按本节在已启动的系统中手动修复，先按以下步骤关闭 SIP；已经显示 <code>disabled</code> 时可跳过关闭步骤。正常完成脚本后不需要重复修复，也不需要为了重复操作而关闭 SIP。</p>
+<ol>
+<li>将 Mac 关机，长按电源键进入启动选项，选择“选项”→“继续”。</li>
+<li>在恢复模式打开“实用工具”→“终端”，执行：</li>
+</ol>
+<pre><code class="language-bash">csrutil disable
+</code></pre>
+<ol start="3">
+<li>按屏幕提示完成确认或用户验证，然后通过苹果菜单重新启动，登录 macOS。</li>
+<li>在系统终端执行以下命令，确认显示 <code>disabled</code>，再继续手动修复：</li>
+</ol>
+<pre><code class="language-bash">csrutil status
+</code></pre>
+<p><code>csrutil disable</code> 在恢复模式中执行；<code>csrutil status</code> 可在系统终端检查。脚本不会代你切换 SIP。后续操作完成后，按第 4 节重新开启 SIP。操作方式参考 <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple：配置 SIP</a>。</p>
+<h3>2. 核对或修复配置标记</h3>
+<p>先按第 1 节关闭 SIP 并登录系统，再执行所需的手动修复；完成后按第 4 节恢复。出现 <code>Operation not permitted</code> 等错误时先停止并核实权限。</p>
+<p>需要手动修复时，先备份现有配置，再将以下命令粘贴到系统终端执行。<code>sudo</code> 会要求输入当前管理员密码，输入时不显示字符：</p>
+<pre><code class="language-bash">sudo cp -Rp /var/db/ConfigurationProfiles/Settings &quot;/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &amp;&amp;
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &amp;&amp;
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+</code></pre>
+<p>这四项操作是删除前两个标记，并确保后两个标记存在。<strong><code>touch</code> 不会清空已有内容，也不会把文件设成只读。</strong> 如果明确需要把后两个标记清空并设为普通权限只读，可在备份后另执行以下命令；它会覆盖这两个标记的现有内容：</p>
+<pre><code class="language-bash">sudo sh -c ': &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
+: &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &amp;&amp;
+chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+</code></pre>
+<p><code>444</code> 只是文件权限上的只读，不等于不可删除或不可重建，也不能据此保证 OTA 后不会再次出现注册提示。配置备份可能包含设备管理信息，请妥善保管。</p>
+<h3>3. 可选：编辑 hosts 扩展屏蔽列表</h3>
+<p>默认脚本已经添加 <code>iprofiles.apple.com</code>、<code>mdmenrollment.apple.com</code>、<code>deviceenrollment.apple.com</code>。扩展名单含有其他用途的 Apple 服务；按 <a href="https://support.apple.com/en-us/101555">Apple 联网清单</a>，需要区分以下用途：</p>
+<div class="post-table"><table>
+<thead>
+<tr>
+<th>域名</th>
+<th>用途及影响</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>iprofiles.apple.com</code>、<code>mdmenrollment.apple.com</code>、<code>deviceenrollment.apple.com</code></td>
+<td>设备注册相关，已包含在默认脚本中</td>
+</tr>
+<tr>
+<td><code>gdmf.apple.com</code></td>
+<td>软件更新目录及受管理更新查询；屏蔽可能影响系统更新检查</td>
+</tr>
+<tr>
+<td><code>albert.apple.com</code></td>
+<td>设备激活；屏蔽可能影响正常激活</td>
+</tr>
+<tr>
+<td><code>acmdm.apple.com</code></td>
+<td>扩展项；本次所查官方清单中未确认其具体用途</td>
+</tr>
+</tbody>
+</table></div>
+<p>需要使用下面这份六域名名单时，先备份 hosts，再以管理员权限打开编辑器：</p>
+<pre><code class="language-bash">sudo cp -p /etc/hosts &quot;/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
+sudo vi /etc/hosts
+</code></pre>
+<p>切换到英文输入法，先按 <code>Esc</code>，再按 <code>G</code> 到最后一行，按小写 <code>o</code> 新建末尾空行并进入编辑状态。仅添加尚未存在的条目，保留原有内容：</p>
+<pre><code class="language-text">0.0.0.0 iprofiles.apple.com
+0.0.0.0 mdmenrollment.apple.com
+0.0.0.0 deviceenrollment.apple.com
+0.0.0.0 gdmf.apple.com
+0.0.0.0 acmdm.apple.com
+0.0.0.0 albert.apple.com
+</code></pre>
+<p>按 <code>Esc</code>，输入 <code>:wq</code> 并回车保存退出；不保存退出可用 <code>:q!</code>。需要刷新 DNS 缓存时执行：</p>
+<pre><code class="language-bash">sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+</code></pre>
+<p>这份名单与 <code>--domains xiaohu-six</code> 不同，后者包含 <code>deviceservices-external.apple.com</code>，不包含 <code>gdmf.apple.com</code>。本节仅提供手动操作说明，不改变脚本的默认域名选项。若新增屏蔽后出现更新检查或激活异常，先删除本次新增的相关条目或使用备份恢复，再重试。保留备份并在 OTA 后核对实际状态，不将这些设置视为“以后绝不会再提示”的保证。</p>
+<h3>4. 恢复开启 SIP</h3>
+<p>若之前关闭过 SIP，完成所需操作后建议恢复开启；如果 <code>csrutil status</code> 已显示 <code>enabled</code>，保持现状即可。</p>
+<ol>
+<li>关机，长按电源键进入启动选项，选择“选项”→“继续”。</li>
+<li>在恢复模式中打开“实用工具”→“终端”，执行：</li>
+</ol>
+<pre><code class="language-bash">csrutil enable
+</code></pre>
+<ol start="3">
+<li>按屏幕提示完成验证，再通过苹果菜单重新启动 Mac。</li>
+<li>登录系统后再次执行 <code>csrutil status</code>，确认显示 <code>enabled</code>。</li>
+</ol>
+<p>若 App Store 下载的 iPhone/iPad 应用提示启动安全策略不满足，先恢复 SIP，并按应用或系统提示检查启动安全策略；不能仅凭应用打不开就判断是 SIP 导致。命令及重启要求可参考 <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple：配置 SIP</a>。</p>
+          </article>
+          <article data-post-language="en" lang="en" hidden>
+<p>For the manual follow-up flow, disable SIP in Recovery first, sign in to repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.</p>
+<h3>1. Before manual repair: disable SIP</h3>
+<p>If you intend to perform the manual repair below in the booted system, disable SIP first using these steps. Skip the disabling step if it already reports <code>disabled</code>. A successful script run does not require repeating repairs or disabling SIP just to repeat them.</p>
+<ol>
+<li>Shut down, hold the power button for startup options, and choose Options → Continue.</li>
+<li>In Recovery, open Utilities → Terminal and run:</li>
+</ol>
+<pre><code class="language-bash">csrutil disable
+</code></pre>
+<ol start="3">
+<li>Complete the requested confirmation or authentication, then restart from the Apple menu and sign in to macOS.</li>
+<li>In the normal system Terminal, run the following and confirm that it reports <code>disabled</code> before continuing:</li>
+</ol>
+<pre><code class="language-bash">csrutil status
+</code></pre>
+<p>Run <code>csrutil disable</code> in Recovery; <code>csrutil status</code> can check the state in the normal system. The script does not switch SIP for you. Re-enable it in section 4 after completing the work. See <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple's SIP configuration guide</a>.</p>
+<h3>2. Inspect or repair configuration markers</h3>
+<p>Disable SIP and sign in as described in section 1, perform the needed manual repair, then restore SIP in section 4. Stop and check permissions if a command reports <code>Operation not permitted</code>.</p>
+<p>For manual repair, back up the existing configuration and paste the following into the normal system Terminal. <code>sudo</code> asks for your current administrator password; typed characters remain hidden:</p>
+<pre><code class="language-bash">sudo cp -Rp /var/db/ConfigurationProfiles/Settings &quot;/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &amp;&amp;
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &amp;&amp;
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+</code></pre>
+<p>The four marker operations remove the first two files and ensure the other two exist. <strong><code>touch</code> neither empties existing files nor makes them read-only.</strong> If you specifically need empty markers with ordinary read-only permissions, run the following after backing up; it overwrites the existing contents of those two markers:</p>
+<pre><code class="language-bash">sudo sh -c ': &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &amp;&amp;
+: &gt; /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &amp;&amp;
+chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+</code></pre>
+<p>Mode <code>444</code> is an ordinary file permission, not protection against deletion or recreation. It does not guarantee that enrollment prompts cannot return after OTA updates. Keep configuration backups private.</p>
+<h3>3. Optional: extend the hosts blocklist</h3>
+<p>The default script already adds <code>iprofiles.apple.com</code>, <code>mdmenrollment.apple.com</code>, and <code>deviceenrollment.apple.com</code>. The extended list includes Apple services with other purposes. See <a href="https://support.apple.com/en-us/101555">Apple's network requirements</a>:</p>
+<div class="post-table"><table>
+<thead>
+<tr>
+<th>Host</th>
+<th>Purpose and effect</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>iprofiles.apple.com</code>, <code>mdmenrollment.apple.com</code>, <code>deviceenrollment.apple.com</code></td>
+<td>Enrollment services, already included by default</td>
+</tr>
+<tr>
+<td><code>gdmf.apple.com</code></td>
+<td>Update catalogs and managed-update queries; blocking may affect update checks</td>
+</tr>
+<tr>
+<td><code>albert.apple.com</code></td>
+<td>Device activation; blocking may affect activation</td>
+</tr>
+<tr>
+<td><code>acmdm.apple.com</code></td>
+<td>Additional host; its specific purpose was not confirmed in the official list reviewed</td>
+</tr>
+</tbody>
+</table></div>
+<p>If you choose to use the following six-host list, back up hosts and open the editor with administrator privileges:</p>
+<pre><code class="language-bash">sudo cp -p /etc/hosts &quot;/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
+sudo vi /etc/hosts
+</code></pre>
+<p>Use an English input method. Press <code>Esc</code>, then <code>G</code> to reach the last line, then lowercase <code>o</code> to open a new line at the end in insert mode. Preserve existing content and add only entries that are not already present:</p>
+<pre><code class="language-text">0.0.0.0 iprofiles.apple.com
+0.0.0.0 mdmenrollment.apple.com
+0.0.0.0 deviceenrollment.apple.com
+0.0.0.0 gdmf.apple.com
+0.0.0.0 acmdm.apple.com
+0.0.0.0 albert.apple.com
+</code></pre>
+<p>Press <code>Esc</code>, type <code>:wq</code>, and press Return to save and exit. Use <code>:q!</code> to exit without saving. To refresh DNS caches if needed:</p>
+<pre><code class="language-bash">sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+</code></pre>
+<p>This list differs from <code>--domains xiaohu-six</code>, which includes <code>deviceservices-external.apple.com</code> and excludes <code>gdmf.apple.com</code>. These are manual instructions; the script's default host selection stays the same. If added blocks cause update-check or activation issues, remove the relevant new entries or restore your backup before retrying. Keep backups and review the actual state after OTA updates; these settings do not guarantee that prompts will never return.</p>
+<h3>4. Re-enable SIP</h3>
+<p>If you previously disabled SIP, restore it after completing the necessary work. If <code>csrutil status</code> already reports <code>enabled</code>, leave it enabled.</p>
+<ol>
+<li>Shut down, hold the power button for startup options, and choose Options → Continue.</li>
+<li>In Recovery, open Utilities → Terminal and run:</li>
+</ol>
+<pre><code class="language-bash">csrutil enable
+</code></pre>
+<ol start="3">
+<li>Complete the requested authentication and restart from the Apple menu.</li>
+<li>After signing in, run <code>csrutil status</code> again and confirm that it reports <code>enabled</code>.</li>
+</ol>
+<p>If an iPhone/iPad app from the App Store reports an incompatible startup security policy, restore SIP and follow the app or system guidance for startup security settings. An app failing to open is not, by itself, proof of a SIP issue. See <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple's SIP configuration guide</a> for the commands and restart requirement.</p>
+          </article>
+        </div>
+      </details>
     </section>
     <div class="defaults"><span><span data-i18n="defaultUser">默认用户名</span><b>apple</b></span><span><span data-i18n="defaultPassword">默认密码</span><b>1234</b></span><span><span data-i18n="defaultAction">默认操作</span><b data-i18n="checkShort">仅检查</b></span></div>
     <p class="footnote" data-i18n="footnote">可输入任意自定义密码；建议登录后修改默认密码。已有 apple 账户时，请换用全新用户名。</p>
@@ -206,7 +405,7 @@
         copyNote: '在恢复模式中打开「实用工具 → 终端」后粘贴', copiedStatus: '命令已复制，可前往终端粘贴。', manual: '自动复制不可用，命令已选中，请按 ⌘C 或 Ctrl+C 复制。',
         options: '更多选项', modeLabel: '运行方式', interactive: '账户设置 + 最后确认（默认）', check: '仅检查 · 不执行修改', apply: '进入执行流程 · 仍需确认',
         scriptLanguage: '脚本语言', autoLanguage: '默认中文（无语言菜单）', chinese: '中文', english: 'English',
-        guide: '安装与使用', step1Title: '备份、抹盘并重装 macOS', step1: '先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。',
+        postInstall: '登录后的后续操作', guide: '安装与使用', step1Title: '备份、抹盘并重装 macOS', step1: '先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。',
         step2Title: '安装后返回恢复模式', step2: '安装完成后再次进入恢复模式，挂载或解锁目标系统卷及同组数据卷，打开「实用工具 → 终端」并连接网络。',
         step3Title: '复制命令，按提示操作', step3: '优先选择国内地址。脚本默认中文并自动匹配同组卷；接着连续输入用户名、密码及密码确认，回车可用默认值。',
         step4Title: '确认结果，再重启登录', step4: '核对目标摘要，输入 2 确认执行，回车仅检查。看到完成提示和“下一步”后，关闭终端、重启并登录。已有 apple 账户需换名；报错时先记录错误及备份位置。',
@@ -221,7 +420,7 @@
         copyNote: 'Open Utilities → Terminal in macOS Recovery, then paste', copiedStatus: 'Command copied. You can now paste it into Terminal.', manual: 'Automatic copy is unavailable. The command is selected; press ⌘C or Ctrl+C to copy.',
         options: 'More options', modeLabel: 'Run mode', interactive: 'Account setup + final decision (default)', check: 'Check only · No changes', apply: 'Apply flow · Confirmation required',
         scriptLanguage: 'Script language', autoLanguage: 'Chinese by default (no language menu)', chinese: '中文', english: 'English',
-        guide: 'Installation & usage', step1Title: 'Back up, erase, and reinstall macOS', step1: 'Back up your data first. Shut down, then hold the power button and choose Options → Continue. Verify the target in Disk Utility before erasing its volume group and reinstalling macOS. Erasing deletes files and accounts in that installation.',
+        postInstall: 'After signing in', guide: 'Installation & usage', step1Title: 'Back up, erase, and reinstall macOS', step1: 'Back up your data first. Shut down, then hold the power button and choose Options → Continue. Verify the target in Disk Utility before erasing its volume group and reinstalling macOS. Erasing deletes files and accounts in that installation.',
         step2Title: 'Return to Recovery after installation', step2: 'Start Recovery again. Mount or unlock the offline System and matching Data volumes, open Utilities → Terminal, and connect to the internet.',
         step3Title: 'Copy the command and follow the prompts', step3: 'Use the China CDN when GitHub is unavailable. The script defaults to Chinese and automatically matches volume groups. Enter the username and password together; Return accepts defaults.',
         step4Title: 'Review the result, then restart and sign in', step4: 'Review the summary and enter 2 to confirm and apply, or Return to check only. Follow the completion screen and Next steps to close Terminal, restart, and sign in. Choose a new name if apple exists; record errors and the backup path before retrying.',
@@ -301,6 +500,7 @@
       this.textContent = pageLanguage === 'zh' ? 'English' : '简体中文';
       this.setAttribute('aria-label', pageLanguage === 'zh' ? 'Switch to English' : '切换到简体中文');
       document.getElementById('readmeLink').href = 'https://github.com/wtone/bypass-mdm/blob/main/' + (pageLanguage === 'zh' ? 'README.md' : 'README-EN.md');
+      document.querySelectorAll('[data-post-language]').forEach(function (element) { element.hidden = element.dataset.postLanguage !== pageLanguage; });
       renderCommand();
     });
     copyButton.addEventListener('click', async function () {

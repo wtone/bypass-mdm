@@ -111,7 +111,109 @@ bash /tmp/bypass-mdm-v3.sh --lang en
 
 密码：默认 `1234`，不进行长度、字符种类或用户名包含关系的强度校验；可输入任意自定义密码。空输入表示使用默认值，不会设置空密码。请保存好自定义密码，脚本不会显示其内容。`1234` 很弱，建议登录后立即修改。若 macOS 命令拒绝设置密码，脚本会报错停止。
 
-## 6. 可选参数
+## 6. 进入系统后的后续操作
+
+手动后续流程为：先在恢复模式关闭 SIP，再登录系统处理标记和 hosts，完成后重新开启 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；正常完成后无需重复执行。需要手动核对或修复时，再使用下面的命令。
+
+### 6.1 手动修复前：先关闭 SIP
+
+如果要按本节在已启动的系统中手动修复，先按以下步骤关闭 SIP；已经显示 `disabled` 时可跳过关闭步骤。正常完成脚本后不需要重复修复，也不需要为了重复操作而关闭 SIP。
+
+1. 将 Mac 关机，长按电源键进入启动选项，选择“选项”→“继续”。
+2. 在恢复模式打开“实用工具”→“终端”，执行：
+
+```bash
+csrutil disable
+```
+
+3. 按屏幕提示完成确认或用户验证，然后通过苹果菜单重新启动，登录 macOS。
+4. 在系统终端执行以下命令，确认显示 `disabled`，再继续手动修复：
+
+```bash
+csrutil status
+```
+
+`csrutil disable` 在恢复模式中执行；`csrutil status` 可在系统终端检查。脚本不会代你切换 SIP。后续操作完成后，按第 6.4 节重新开启 SIP。操作方式参考 [Apple：配置 SIP](https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html)。
+
+### 6.2 核对或修复配置标记
+
+先按第 6.1 节关闭 SIP 并登录系统，再执行所需的手动修复；完成后按第 6.4 节恢复。出现 `Operation not permitted` 等错误时先停止并核实权限。
+
+需要手动修复时，先备份现有配置，再将以下命令粘贴到系统终端执行。`sudo` 会要求输入当前管理员密码，输入时不显示字符：
+
+```bash
+sudo cp -Rp /var/db/ConfigurationProfiles/Settings "/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)" &&
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &&
+sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordFound &&
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
+sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
+```
+
+这四项操作是删除前两个标记，并确保后两个标记存在。**`touch` 不会清空已有内容，也不会把文件设成只读。** 如果明确需要把后两个标记清空并设为普通权限只读，可在备份后另执行以下命令；它会覆盖这两个标记的现有内容：
+
+```bash
+sudo sh -c ': > /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled &&
+: > /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound &&
+chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
+```
+
+`444` 只是文件权限上的只读，不等于不可删除或不可重建，也不能据此保证 OTA 后不会再次出现注册提示。配置备份可能包含设备管理信息，请妥善保管。
+
+### 6.3 可选：编辑 hosts 扩展屏蔽列表
+
+默认脚本已经添加 `iprofiles.apple.com`、`mdmenrollment.apple.com`、`deviceenrollment.apple.com`。扩展名单含有其他用途的 Apple 服务；按 [Apple 联网清单](https://support.apple.com/en-us/101555)，需要区分以下用途：
+
+| 域名 | 用途及影响 |
+|---|---|
+| `iprofiles.apple.com`、`mdmenrollment.apple.com`、`deviceenrollment.apple.com` | 设备注册相关，已包含在默认脚本中 |
+| `gdmf.apple.com` | 软件更新目录及受管理更新查询；屏蔽可能影响系统更新检查 |
+| `albert.apple.com` | 设备激活；屏蔽可能影响正常激活 |
+| `acmdm.apple.com` | 扩展项；本次所查官方清单中未确认其具体用途 |
+
+需要使用下面这份六域名名单时，先备份 hosts，再以管理员权限打开编辑器：
+
+```bash
+sudo cp -p /etc/hosts "/etc/hosts.before-mdm-$(date +%Y%m%d-%H%M%S)" &&
+sudo vi /etc/hosts
+```
+
+切换到英文输入法，先按 `Esc`，再按 `G` 到最后一行，按小写 `o` 新建末尾空行并进入编辑状态。仅添加尚未存在的条目，保留原有内容：
+
+```text
+0.0.0.0 iprofiles.apple.com
+0.0.0.0 mdmenrollment.apple.com
+0.0.0.0 deviceenrollment.apple.com
+0.0.0.0 gdmf.apple.com
+0.0.0.0 acmdm.apple.com
+0.0.0.0 albert.apple.com
+```
+
+按 `Esc`，输入 `:wq` 并回车保存退出；不保存退出可用 `:q!`。需要刷新 DNS 缓存时执行：
+
+```bash
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
+
+这份名单与 `--domains xiaohu-six` 不同，后者包含 `deviceservices-external.apple.com`，不包含 `gdmf.apple.com`。本节仅提供手动操作说明，不改变脚本的默认域名选项。若新增屏蔽后出现更新检查或激活异常，先删除本次新增的相关条目或使用备份恢复，再重试。保留备份并在 OTA 后核对实际状态，不将这些设置视为“以后绝不会再提示”的保证。
+
+### 6.4 恢复开启 SIP
+
+若之前关闭过 SIP，完成所需操作后建议恢复开启；如果 `csrutil status` 已显示 `enabled`，保持现状即可。
+
+1. 关机，长按电源键进入启动选项，选择“选项”→“继续”。
+2. 在恢复模式中打开“实用工具”→“终端”，执行：
+
+```bash
+csrutil enable
+```
+
+3. 按屏幕提示完成验证，再通过苹果菜单重新启动 Mac。
+4. 登录系统后再次执行 `csrutil status`，确认显示 `enabled`。
+
+若 App Store 下载的 iPhone/iPad 应用提示启动安全策略不满足，先恢复 SIP，并按应用或系统提示检查启动安全策略；不能仅凭应用打不开就判断是 SIP 导致。命令及重启要求可参考 [Apple：配置 SIP](https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html)。
+
+## 7. 可选参数
 
 | 参数 | 如何使用 |
 |---|---|
@@ -129,7 +231,7 @@ bash /tmp/bypass-mdm-v3.sh --lang en
 
 仍可用 `--system`、`--data`、`--username` 一次性指定目标；三个参数都提供且没有 `--apply` 时保持仅检查。交互选择需要可交互的终端，请下载为文件后直接运行，不要用 `curl ... | bash`。
 
-## 7. 常见问题
+## 8. 常见问题
 
 | 问题 | 处理方法 |
 |---|---|
