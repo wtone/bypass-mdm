@@ -47,7 +47,7 @@ Paste this complete line into Terminal in Recovery. No volume-path or username a
 cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
 ```
 
-After downloading, choose the System and Data volumes and enter a new username. The action menu then offers:
+At startup, choose a language: Return or `1` selects Chinese (the default), `2` selects English, and `q` cancels. Then choose the System and Data volumes and enter a new username. The action menu offers:
 
 - `1` or Return: check only; no account or configuration changes.
 - `2`: enter the apply flow, including exact device-ID confirmation and a strong password entered twice.
@@ -61,14 +61,23 @@ If already downloaded, run it separately:
 bash /tmp/bypass-mdm-v3.sh
 ```
 
+To choose a language directly and skip the language menu:
+
+```bash
+bash /tmp/bypass-mdm-v3.sh --lang en
+bash /tmp/bypass-mdm-v3.sh --lang zh
+```
+
+Append `--lang en` to the end of the one-line download command to start directly in English. The script's menus, prompts, help, and error explanations follow the selected language; output from macOS commands follows the system settings.
+
 Files in `/tmp` may disappear after a restart. Download again if needed.
 
 ## 5. Complete the prompts
 
-1. Select a System volume by number, then a matching Data volume. If no candidate is available, mount or unlock the volumes in Disk Utility and rerun.
+1. Choose a language (Chinese by default), then select a System volume by number and a matching Data volume. If no candidate is available, mount or unlock the volumes in Disk Utility and rerun.
 2. Enter an unused username. Correct invalid or conflicting names when prompted.
 3. Review the displayed paths, device identifiers, and username. Choose `2` to apply or `1` to check only.
-4. Enter the exact requested confirmation, such as `APPLY disk3s1 disk3s5`. Use the identifiers displayed during this run.
+4. Enter the exact requested confirmation, such as `APPLY disk3s1 disk3s5`. Use the identifiers displayed during this run. Both languages require uppercase `APPLY` and the exact device identifiers.
 5. Enter the password twice. Input is hidden and there is no default password.
 6. Wait for completion. Investigate any error instead of treating it as success.
 7. Quit Terminal, restart using the Apple menu, and try signing in with the new credentials.
@@ -81,6 +90,7 @@ Password: 16–128 characters, including uppercase and lowercase letters, a digi
 
 | Argument | Usage |
 |---|---|
+| `--lang zh` / `--lang en` | Choose Chinese or English directly and skip startup language selection; Chinese is the default |
 | `--system 'path'` | Optional; omit to choose a System volume interactively |
 | `--data 'path'` | Optional; omit to choose a matching Data volume |
 | `--username name` | Optional; omit to enter a new username interactively |

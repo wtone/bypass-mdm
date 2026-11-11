@@ -22,11 +22,14 @@ def posix(path):
     return '/' + text[0].lower() + text[2:] if len(text) > 1 and text[1] == ':' else text
 
 class SafetyTests(unittest.TestCase):
-    def run_body(self, body):
+    def run_body(self, body, language='en'):
         env = os.environ.copy()
         env['REVIEW_SCRIPT'] = posix(SCRIPT)
         env['FIXTURES'] = posix(self.fixture)
-        return subprocess.run([BASH, '--noprofile', '--norc', '-c', 'source "$REVIEW_SCRIPT"\n' + body], env=env, text=True, capture_output=True, timeout=30)
+        setup = 'source "$REVIEW_SCRIPT"\n'
+        if language is not None:
+            setup += 'language=' + language + '\n'
+        return subprocess.run([BASH, '--noprofile', '--norc', '-c', setup + body], env=env, encoding='utf-8', capture_output=True, timeout=30)
 
     @classmethod
     def setUpClass(cls):
@@ -56,6 +59,42 @@ class SafetyTests(unittest.TestCase):
         result = subprocess.run([BASH, '-n', posix(SCRIPT)], text=True, capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stderr)
 
+    def test_default_language_and_help_are_chinese_without_terminal(self):
+        result = self.run_body('[ "$language" = zh ]; main --help </dev/null', language=None)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('用法（', result.stdout)
+        self.assertNotIn('Usage (', result.stdout)
+
+    def test_english_help_accepts_language_before_or_after_help(self):
+        for args in ('--lang en --help', '--help --lang en'):
+            with self.subTest(args=args):
+                result = self.ok('main ' + args + ' </dev/null')
+                self.assertIn('Usage (', result.stdout)
+                self.assertNotIn('用法（', result.stdout)
+
+    def test_invalid_or_missing_language_stops_before_volume_access(self):
+        for args in ('--lang fr', '--lang', '--lang en --lang fr'):
+            with self.subTest(args=args):
+                result = self.stops("diskutil() { printf 'UNEXPECTED DISK ACCESS'; }; main " + args)
+                self.assertNotIn('UNEXPECTED DISK ACCESS', result.stdout)
+
+    def test_language_menu_defaults_to_chinese(self):
+        self.ok("require_terminal() { :; }; choose_language <<<''; [ \"$language\" = zh ]")
+
+    def test_language_menu_retries_and_selects_english(self):
+        result = self.ok("require_terminal() { :; }; choose_language <<<$'bogus\\n2'; [ \"$language\" = en ]; choose_action <<<''")
+        self.assertIn('Check only (default)', result.stdout)
+
+    def test_language_menu_cancel_and_eof_stop(self):
+        self.stops("require_terminal() { :; }; choose_language <<<'q'")
+        self.stops('require_terminal() { :; }; choose_language </dev/null')
+
+    def test_localized_messages_keep_variable_text_literal(self):
+        for language in ('zh', 'en'):
+            with self.subTest(language=language):
+                result = self.ok('language=' + language + "; info 'Volume is not mounted: %s' '/Volumes/100% \\n literal'")
+                self.assertIn('/Volumes/100% \\n literal', result.stdout)
+
     def test_password_rejects_default_and_short(self):
         self.ok('username=NewAdmin; ! validate_password 1234; ! validate_password "Short1!"')
 
@@ -68,6 +107,28 @@ class SafetyTests(unittest.TestCase):
     def test_no_password_echo(self):
         result = self.ok('username=NewAdmin; get_password <<\'EOF\'\nUnique-Long-Secret-482!\nUnique-Long-Secret-482!\nEOF\nunset passw')
         self.assertNotIn('Unique-Long-Secret', result.stdout + result.stderr)
+
+    def test_password_retries_weak_and_mismatched_input_in_both_languages(self):
+        for language, weak_message, mismatch_message in (
+            ('zh', '密码不符合要求', '两次密码不一致'),
+            ('en', 'Password does not meet the policy', 'Passwords did not match'),
+        ):
+            with self.subTest(language=language):
+                result = self.ok('language=' + language + '''
+username=NewAdmin
+get_password <<'EOF'
+1234
+NewAdmin-Long-Secret-482!
+Unique-Long-Secret-482!
+Different-Long-Secret-483!
+Unique-Long-Secret-482!
+Unique-Long-Secret-482!
+EOF
+[ "$passw" = 'Unique-Long-Secret-482!' ]; unset passw
+''')
+                self.assertIn(weak_message, result.stdout)
+                self.assertIn(mismatch_message, result.stdout)
+                self.assertNotIn('Long-Secret', result.stdout + result.stderr)
 
     def test_uid_skips_occupied_numbers(self):
         result = self.ok("user_inventory=$'root 0\nAlice 501\nBob 502'; find_available_uid")
@@ -292,8 +353,12 @@ EOF
         self.ok("require_terminal() { :; }; choose_action <<<$'bogus\\n2'; [ \"$selected_action\" = apply ]")
 
     def test_confirmation_requires_exact_device_ids(self):
-        self.stops("require_terminal() { :; }; expected_system=disk3s1; expected_data=disk3s5; confirm_targets <<<'APPLY disk4s1 disk4s5'")
-        self.ok("require_terminal() { :; }; expected_system=disk3s1; expected_data=disk3s5; confirm_targets <<<'APPLY disk3s1 disk3s5'")
+        for language in ('zh', 'en'):
+            with self.subTest(language=language):
+                setup = 'language=' + language + '; require_terminal() { :; }; expected_system=disk3s1; expected_data=disk3s5; '
+                for answer in ('APPLY disk4s1 disk4s5', 'apply disk3s1 disk3s5', '确认 disk3s1 disk3s5'):
+                    self.stops(setup + "confirm_targets <<<'" + answer + "'")
+                self.ok(setup + "confirm_targets <<<'APPLY disk3s1 disk3s5'")
 
     def test_check_and_apply_flags_conflict(self):
         self.stops('main --check --apply')
@@ -327,22 +392,23 @@ apply_changes() { fail 'Unexpected apply'; }
 '''
 
     def test_no_argument_flow_defaults_to_read_only(self):
-        result = self.ok(self.interactive_main_fixture() + "main <<<$'FreshAdmin\\n\\n'")
-        self.assertIn('READ-ONLY PREFLIGHT COMPLETE', result.stdout)
+        result = self.ok(self.interactive_main_fixture() + "main <<<$'\\nFreshAdmin\\n\\n'")
+        self.assertIn('只读检查完成', result.stdout)
+        self.assertIn('仅检查（默认）', result.stdout)
 
     def test_check_flag_skips_action_menu(self):
         result = self.ok(self.interactive_main_fixture() + '''
 choose_action() { fail 'Action menu must not be used with --check'; }
-main --check <<<'FreshAdmin'
+main --lang en --check <<<'FreshAdmin'
 ''')
         self.assertIn('READ-ONLY PREFLIGHT COMPLETE', result.stdout)
 
     def test_cancel_action_makes_no_changes(self):
-        result = self.ok(self.interactive_main_fixture() + "main <<<$'FreshAdmin\\nq'")
+        result = self.ok(self.interactive_main_fixture() + "main --lang en <<<$'FreshAdmin\\nq'")
         self.assertIn('Cancelled. No changes made.', result.stdout)
 
     def test_interactive_apply_keeps_confirmation_password_and_rechecks(self):
-        result = self.ok(self.interactive_main_fixture() + '''
+        body = self.interactive_main_fixture() + '''
 # Simulate root only for the mocked apply flow; no actual system writes are used.
 function [ {
   if builtin [ "$#" -eq 4 ] && builtin [ "$1" = "$EUID" ] && builtin [ "$2" = -eq ] && builtin [ "$3" = 0 ]; then return 0; fi
@@ -353,16 +419,19 @@ apply_changes() {
   [ "$passw" = 'Unique-Long-Secret-482!' ]
   printf 'MOCK APPLY AFTER RECHECKS\\n'
 }
-main <<'EOF'
+'''
+        inputs = '''
 FreshAdmin
 2
 APPLY disk3s1 disk3s5
 Unique-Long-Secret-482!
 Unique-Long-Secret-482!
-EOF
-''')
-        self.assertIn('MOCK APPLY AFTER RECHECKS', result.stdout)
-        self.assertNotIn('Unique-Long-Secret', result.stdout + result.stderr)
+'''.lstrip('\n')
+        for args, prefix in (('--lang zh', ''), ('--lang en', ''), ('', '\n'), ('', '2\n')):
+            with self.subTest(args=args, prefix=prefix):
+                result = self.ok(body + 'main ' + args + " <<'EOF'\n" + prefix + inputs + 'EOF\n')
+                self.assertIn('MOCK APPLY AFTER RECHECKS', result.stdout)
+                self.assertNotIn('Unique-Long-Secret', result.stdout + result.stderr)
 
 
 if __name__ == '__main__':
