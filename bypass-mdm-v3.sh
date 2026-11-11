@@ -1,7 +1,7 @@
 #!/bin/bash
-# wtone-bypass-mdm-v2.sh
+# bypass-mdm-v3.sh
 # Copyright (c) 2026 assafdori. MIT License; see LICENSE in the repository.
-# Safety-focused derivative of wtone/bypass-mdm bypass-mdm-v2.sh.
+# Safety-focused v3 derivative of wtone/bypass-mdm bypass-mdm-v2.sh.
 # Upstream commit: 60583be37d41f314cb04a99e260071fc31a2eaf4
 # Upstream SHA256: 1aa477aad2ee4b2dbf2e59214dee05b73c81b392d74f89ac341db77597a98256
 # Offline macOS volumes only. NOT verified on a real Mac; no guarantee of MDM removal.
@@ -18,7 +18,7 @@ info() { printf '%s\n' "$*"; }
 usage() {
     cat <<'EOF'
 Usage (macOS Recovery, mounted/unlocked offline System and Data volumes):
-  bash wtone-bypass-mdm-v2.sh --system '/Volumes/Your System' \
+  bash bypass-mdm-v3.sh --system '/Volumes/Your System' \
     --data '/Volumes/Your Data' --username NEWNAME [--domains conservative|xiaohu-six] [--apply]
 
 Without --apply: inspect volumes, account conflicts, UID and hosts; make no changes.

@@ -1,3 +1,9 @@
+> 历史文档：下文保留旧版脚本说明，原文未改写。当前 `bypass-mdm-v3.sh` 的用法请阅读 [中文说明](../README.md) 或 [English guide](../README-EN.md)。
+>
+> Legacy documentation: the original text below describes the older scripts. For v3, use the current guides linked above; the commands and interaction differ.
+
+---
+
 # Bypass MDM for macOS 💻
 
 ![mdm-screen](https://raw.githubusercontent.com/assafdori/bypass-mdm/main/mdm-screen.png)
