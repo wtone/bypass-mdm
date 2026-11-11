@@ -4,6 +4,8 @@
 
 网页入口：[https://cdn.h5ds.com/bypass-mdm](https://cdn.h5ds.com/bypass-mdm)。可在浏览器中切换国内/GitHub 下载地址、一键复制命令，并查看使用说明。网页源文件位于项目根目录的 [index.html](index.html)。
 
+参考视频：[哔哩哔哩视频教程](https://www.bilibili.com/video/BV1zG8M6wEu5)。
+
 下面按“抹盘 → 重装 macOS → 返回恢复模式 → 运行脚本 → 重启登录”的顺序操作，适用于 Apple 芯片 Mac，包括 M3 Pro。
 
 **抹盘会删除目标安装中的文件和账户。先备份数据、接通电源并准备可用网络。** 脚本在 macOS 安装完成后运行，不负责抹盘或安装系统；也不能解除激活锁或组织端的设备归属。
