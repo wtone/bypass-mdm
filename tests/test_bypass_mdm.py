@@ -90,46 +90,6 @@ class SafetyTests(unittest.TestCase):
                 result = self.ok('language=' + language + "; info 'Volume is not mounted: %s' '/Volumes/100% \\n literal'")
                 self.assertIn('/Volumes/100% \\n literal', result.stdout)
 
-    def test_any_custom_password_without_strength_checks(self):
-        import shlex
-        for language in ('zh', 'en'):
-            for value in ('x', '1234', 'apple', 'alllowercase', 'UPPERCASE', '含空格 密码', '  a \\ %  ', 'a' * 129):
-                with self.subTest(language=language, value=value):
-                    self.ok('language=' + language + '; username=apple; get_password <<\'EOF\'\n' + value + '\n' + value + '\nEOF\n[ "$passw" = ' + shlex.quote(value) + ' ]; unset passw')
-
-    def test_default_password_and_return_confirmation_in_both_languages(self):
-        for language in ('zh', 'en'):
-            with self.subTest(language=language):
-                self.ok('language=' + language + "; get_password <<<$'\\n'; [ \"$passw\" = 1234 ]; unset passw")
-                self.ok('language=' + language + "; get_password <<<$'custom\\n'; [ \"$passw\" = custom ]; unset passw")
-
-    def test_password_input_and_confirmation_eof_stop(self):
-        self.stops('get_password </dev/null')
-        self.stops("get_password <<<'custom'")
-
-    def test_no_password_echo(self):
-        result = self.ok('username=NewAdmin; get_password <<\'EOF\'\nUnique-Long-Secret-482!\nUnique-Long-Secret-482!\nEOF\nunset passw')
-        self.assertNotIn('Unique-Long-Secret', result.stdout + result.stderr)
-
-    def test_password_retries_mismatched_input_in_both_languages(self):
-        for language, mismatch_message in (
-            ('zh', '两次密码不一致'),
-            ('en', 'Passwords did not match'),
-        ):
-            with self.subTest(language=language):
-                result = self.ok('language=' + language + '''
-username=NewAdmin
-get_password <<'EOF'
-Unique-Long-Secret-482!
-Different-Long-Secret-483!
-Unique-Long-Secret-482!
-Unique-Long-Secret-482!
-EOF
-[ "$passw" = 'Unique-Long-Secret-482!' ]; unset passw
-''')
-                self.assertIn(mismatch_message, result.stdout)
-                self.assertNotIn('Long-Secret', result.stdout + result.stderr)
-
     def test_uid_skips_occupied_numbers(self):
         result = self.ok("user_inventory=$'root 0\nAlice 501\nBob 502'; find_available_uid")
         self.assertEqual(result.stdout.strip(), '503')
@@ -207,21 +167,6 @@ done
         result = self.stops('install_traps; changes_started=1; false')
         self.assertEqual(result.stderr.count('Apply stopped'), 1)
         self.assertNotIn('No target files', result.stderr)
-
-    def test_retriable_username_conflict_has_no_fatal_exit_notice(self):
-        result = self.ok('''
-install_traps
-require_terminal() { :; }
-homes_dir="$FIXTURES/homes"; users_dir="$FIXTURES/users"
-user_inventory=$'nobody -2\nroot 0\napple 501'
-prompt_username <<'EOF'
-
-FreshUser
-EOF
-[ "$username" = FreshUser ]
-''')
-        self.assertNotIn('Preflight stopped', result.stderr)
-        self.assertNotIn('Apply stopped', result.stderr)
 
     def test_existing_home_stops(self):
         self.stops('username=StaleHome; user_inventory="root 0"; homes_dir="$FIXTURES/homes"; users_dir="$FIXTURES/users"; mkdir "$homes_dir/StaleHome"; assert_new_account')
@@ -301,7 +246,7 @@ read_users() { user_inventory='root 0'; }
 assert_new_account() { :; }
 check_hosts() { :; }
 apply_changes() { fail 'SHOULD NEVER APPLY'; }
-main --system /Volumes/System --data /Volumes/Data --username NewAdmin
+main --check --system /Volumes/System --data /Volumes/Data --username NewAdmin
 ''')
 
     def candidate_fixture(self):
@@ -370,7 +315,7 @@ list_volume_candidates Data 99999999-2222-3333-4444-555555555555
 [ "$candidate_count" -eq 0 ]
 ''')
 
-    def menu_fixture(self):
+    def volume_selection_fixture(self):
         return '''
 require_terminal() { :; }
 list_volume_candidates() {
@@ -384,76 +329,28 @@ list_volume_candidates() {
     def test_volume_default_is_automatic_in_both_languages_without_terminal(self):
         for language in ('zh', 'en'):
             with self.subTest(language=language):
-                result = self.ok(self.menu_fixture() + 'language=' + language + "; require_terminal() { fail 'Unexpected input'; }; select_default_volume System '' </dev/null; [ \"$selected_volume_path\" = '/Volumes/First System' ]")
+                result = self.ok(self.volume_selection_fixture() + 'language=' + language + "; require_terminal() { fail 'Unexpected input'; }; select_default_volume System '' </dev/null; [ \"$selected_volume_path\" = '/Volumes/First System' ]")
                 self.assertIn('/Volumes/First System [disk3s1]', result.stdout)
 
     def test_single_candidate_is_selected_without_input(self):
-        self.ok(self.menu_fixture() + '''
+        self.ok(self.volume_selection_fixture() + '''
 list_volume_candidates() { candidate_count=1; candidate_paths=(/Volumes/Only); candidate_devices=(disk3s1); candidate_groups=(group-a); }
 select_default_volume System '' </dev/null
 [ "$selected_volume_path" = /Volumes/Only ]
 ''')
 
     def test_no_candidate_stops_before_account_input(self):
-        self.stops(self.menu_fixture() + "list_volume_candidates() { candidate_count=0; }; select_default_volume System ''")
-
-    def test_interactive_input_requires_terminal(self):
-        self.stops('require_terminal </dev/null')
-
-    def test_interactive_username_retries_invalid_and_existing_name(self):
-        self.ok('''
-require_terminal() { :; }
-homes_dir="$FIXTURES/homes"; users_dir="$FIXTURES/users"
-user_inventory=$'root 0\nAlice 501'
-prompt_username <<'EOF'
-bad name
-ALICE
-FreshName
-EOF
-[ "$username" = FreshName ]
-''')
-
-    def test_username_defaults_to_apple_and_keeps_conflict_checks(self):
-        setup = '''
-require_terminal() { :; }
-homes_dir="$FIXTURES/homes"; users_dir="$FIXTURES/users"
-'''
-        for language in ('zh', 'en'):
-            with self.subTest(language=language):
-                self.ok(setup + 'language=' + language + "; user_inventory='root 0'; prompt_username <<<''; [ \"$username\" = apple ]")
-                self.ok(setup + 'language=' + language + '''
-user_inventory=$'root 0\nAPPLE 501'
-prompt_username <<'EOF'
-
-FreshApple
-EOF
-[ "$username" = FreshApple ]
-''')
-        self.stops(setup + "user_inventory='root 0'; prompt_username </dev/null")
-
-    def test_action_menu_defaults_to_check(self):
-        self.ok("require_terminal() { :; }; choose_action <<<''; [ \"$selected_action\" = check ]")
-
-    def test_action_menu_retries_invalid_choice(self):
-        self.ok("require_terminal() { :; }; choose_action <<<$'bogus\\n2'; [ \"$selected_action\" = apply ]")
-
-    def test_confirmation_requires_exact_device_ids(self):
-        for language in ('zh', 'en'):
-            with self.subTest(language=language):
-                setup = 'language=' + language + '; require_terminal() { :; }; expected_system=disk3s1; expected_data=disk3s5; '
-                for answer in ('APPLY disk4s1 disk4s5', 'apply disk3s1 disk3s5', '确认 disk3s1 disk3s5'):
-                    self.stops(setup + "confirm_targets <<<'" + answer + "'")
-                self.ok(setup + "confirm_targets <<<'APPLY disk3s1 disk3s5'")
-                self.ok(setup + "confirm_targets <<<''")
-                self.stops(setup + 'confirm_targets </dev/null')
+        self.stops(self.volume_selection_fixture() + "list_volume_candidates() { candidate_count=0; }; select_default_volume System ''")
 
     def test_check_and_apply_flags_conflict(self):
         self.stops('main --check --apply')
+        self.stops('main --apply --check')
 
-    def interactive_main_fixture(self, real_volume_detection=False):
+    def auto_main_fixture(self, real_volume_detection=False):
         body = '''
-require_terminal() { :; }
 uname() { printf Darwin; }
+require_root() { :; }
+read() { fail 'Unexpected interactive input'; }
 canonical_mount() { printf '%s' "$1"; }
 volume_group_for_path() { printf 11111111-2222-3333-4444-555555555555; }
 select_default_volume() {
@@ -473,14 +370,14 @@ validate_paths() {
   homes_dir="$FIXTURES/homes"; etc_dir="$FIXTURES"; config_path="$FIXTURES"
   hosts_file="$FIXTURES/main-hosts"; : > "$hosts_file"
 }
-read_users() { inventory_count=$((inventory_count + 1)); user_inventory='root 0'; }
+read_users() { inventory_count=$((inventory_count + 1)); user_inventory=$'nobody -2\nroot 0'; }
 check_hosts() { :; }
 apply_changes() { fail 'Unexpected apply'; }
 '''
         return body.replace('select_default_volume() {', 'unused_select_default_volume() {') if real_volume_detection else body
 
-    def test_complete_flow_with_return_defaults_in_both_languages(self):
-        body = self.interactive_main_fixture(real_volume_detection=True) + '''
+    def test_default_apply_with_no_input_in_both_languages(self):
+        body = self.auto_main_fixture(real_volume_detection=True) + '''
 list_volume_candidates() {
   candidate_count=1; candidate_groups=(11111111-2222-3333-4444-555555555555)
   case "$1" in
@@ -488,80 +385,74 @@ list_volume_candidates() {
     Data) [ "$2" = 11111111-2222-3333-4444-555555555555 ]; candidate_paths=("$FIXTURES/Data"); candidate_devices=(disk3s5) ;;
   esac
 }
-function [ {
-  if builtin [ "$#" -eq 4 ] && builtin [ "$1" = "$EUID" ] && builtin [ "$2" = -eq ] && builtin [ "$3" = 0 ]; then return 0; fi
-  builtin [ "$@"
-}
 apply_changes() {
   [ "$validation_count" -eq 2 ]; [ "$inventory_count" -eq 2 ]
   [ "$username" = apple ]; [ "$passw" = 1234 ]
   [ "$system_path" = "$FIXTURES/System" ]; [ "$data_path" = "$FIXTURES/Data" ]
-  printf 'MOCK DEFAULT APPLY AFTER RECHECKS\\n'
+  printf 'AUTOMATIC APPLY AFTER RECHECKS\\n'
 }
 '''
-        for language in ('zh', 'en'):
-            for flags, lines in (('', 4), (' --apply', 4)):
-                with self.subTest(language=language, flags=flags):
-                    result = self.ok(body + 'main --lang ' + language + flags + " <<'EOF'\n" + '\n' * lines + 'EOF\n')
-                    if flags:
-                        self.assertIn('MOCK DEFAULT APPLY AFTER RECHECKS', result.stdout)
-                    else:
-                        self.assertNotIn('MOCK DEFAULT APPLY', result.stdout)
-                        self.assertIn('只读检查完成' if language == 'zh' else 'READ-ONLY PREFLIGHT COMPLETE', result.stdout)
+        for args in ('', '--lang en', '--apply', '--lang en --apply'):
+            with self.subTest(args=args):
+                result = self.ok(body + 'main ' + args + ' </dev/null')
+                self.assertIn('AUTOMATIC APPLY AFTER RECHECKS', result.stdout)
 
-    def test_no_argument_flow_defaults_to_read_only(self):
-        result = self.ok(self.interactive_main_fixture() + "main <<<$'\\n\\n\\n'")
-        self.assertIn('只读检查完成', result.stdout)
-        self.assertIn('仅检查（默认）', result.stdout)
-        self.assertIn('新管理员：apple', result.stdout)
-
-    def test_check_flag_skips_action_menu(self):
-        result = self.ok(self.interactive_main_fixture() + '''
-choose_action() { fail 'Action menu must not be used with --check'; }
-get_password() { fail 'Password must not be requested with --check'; }
-main --lang en --check <<<'FreshAdmin'
-''')
-        self.assertIn('READ-ONLY PREFLIGHT COMPLETE', result.stdout)
-
-    def test_auto_volume_check_with_username_requires_no_terminal(self):
-        result = self.ok(self.interactive_main_fixture() + '''
-require_terminal() { fail 'Unexpected terminal input'; }
-get_password() { fail 'Unexpected password input'; }
-main --lang en --check --username FreshAdmin </dev/null
-''')
-        self.assertIn('READ-ONLY PREFLIGHT COMPLETE', result.stdout)
-
-    def test_username_and_password_precede_the_final_menu(self):
-        result = self.ok(self.interactive_main_fixture() + '''
-prompt_username() { username=FreshAdmin; printf 'USERNAME_INPUT\\n'; }
-get_password() { passw=1234; printf 'PASSWORD_INPUT\\n'; }
-choose_action() { printf 'FINAL_DECISION\\n'; selected_action=check; }
-main --lang en
+    def test_check_is_read_only_without_root_or_input(self):
+        result = self.ok(self.auto_main_fixture() + '''
+require_root() { fail 'Check-only must not require root'; }
+main --lang en --check </dev/null
+[ "$validation_count" -eq 1 ]; [ "$inventory_count" -eq 1 ]
 [ -z "${passw+x}" ]
 ''')
-        self.assertLess(result.stdout.index('USERNAME_INPUT'), result.stdout.index('PASSWORD_INPUT'))
-        self.assertLess(result.stdout.index('PASSWORD_INPUT'), result.stdout.index('System:'))
-        self.assertLess(result.stdout.index('System:'), result.stdout.index('FINAL_DECISION'))
+        self.assertIn('READ-ONLY PREFLIGHT COMPLETE', result.stdout)
 
-    def test_explicit_apply_groups_credentials_before_one_disk_confirmation(self):
-        result = self.ok(self.interactive_main_fixture() + '''
-function [ {
-  if builtin [ "$#" -eq 4 ] && builtin [ "$1" = "$EUID" ] && builtin [ "$2" = -eq ] && builtin [ "$3" = 0 ]; then return 0; fi
-  builtin [ "$@"
-}
-prompt_username() { username=FreshAdmin; printf 'USERNAME_INPUT\\n'; }
-get_password() { passw=1234; printf 'PASSWORD_INPUT\\n'; }
-choose_action() { fail 'Unexpected action menu'; }
-confirmation_count=0
-confirm_targets() { confirmation_count=$((confirmation_count + 1)); printf 'FINAL_CONFIRMATION\\n'; }
-apply_changes() { [ "$confirmation_count" -eq 1 ]; [ "$validation_count" -eq 2 ]; printf 'APPLIED\\n'; }
-main --lang en --apply
+    def test_full_target_arguments_apply_by_default(self):
+        self.ok(self.auto_main_fixture() + '''
+apply_changes() { [ "$username" = CustomTemp ]; [ "$passw" = 1234 ]; [ "$validation_count" -eq 2 ]; }
+main --system "$FIXTURES/System" --data "$FIXTURES/Data" --username CustomTemp </dev/null
 ''')
-        self.assertLess(result.stdout.index('USERNAME_INPUT'), result.stdout.index('PASSWORD_INPUT'))
-        self.assertLess(result.stdout.index('PASSWORD_INPUT'), result.stdout.index('FINAL_CONFIRMATION'))
-        self.assertLess(result.stdout.index('FINAL_CONFIRMATION'), result.stdout.index('APPLIED'))
 
-    def test_success_summary_is_localized_and_hides_password(self):
+    def test_automatic_apply_requires_root_before_target_access(self):
+        result = self.stops(self.auto_main_fixture() + '''
+require_root() { fail 'Apply requires root in Recovery. No changes made.'; }
+select_default_volume() { fail 'UNEXPECTED TARGET ACCESS'; }
+main --lang en </dev/null
+''')
+        self.assertIn('Apply requires root', result.stderr)
+        self.assertNotIn('UNEXPECTED TARGET ACCESS', result.stderr)
+
+    def test_default_account_conflict_stops_without_reuse(self):
+        result = self.stops(self.auto_main_fixture() + '''
+read_users() { user_inventory=$'root 0\nAPPLE 501'; }
+main --lang en </dev/null
+''')
+        self.assertIn('Username already exists', result.stderr)
+        self.assertNotIn('Unexpected apply', result.stderr)
+
+    def test_automatic_apply_rechecks_uid_before_writes(self):
+        result = self.stops(self.auto_main_fixture() + '''
+read_users() {
+  inventory_count=$((inventory_count + 1))
+  if [ "$inventory_count" -eq 1 ]; then user_inventory='root 0'; else user_inventory=$'root 0\nOtherUser 501'; fi
+}
+main --lang en </dev/null
+''')
+        self.assertIn('Selected UID is now occupied', result.stderr)
+        self.assertNotIn('Unexpected apply', result.stderr)
+
+    def test_automatic_apply_rechecks_disk_identity_before_writes(self):
+        result = self.stops(self.auto_main_fixture() + '''
+validate_volumes() {
+  validation_count=$((validation_count + 1))
+  [ "$validation_count" -lt 2 ] || fail 'Selected volume identity changed after preflight.'
+  expected_system=disk3s1; expected_data=disk3s5; expected_group=fixture
+}
+main --lang en </dev/null
+''')
+        self.assertIn('Selected volume identity changed', result.stderr)
+        self.assertNotIn('Unexpected apply', result.stderr)
+
+    def test_success_summary_is_localized_with_temporary_credentials(self):
         for language, title, steps in (
             ('zh', 'MDM 绕过配置已完成', '下一步：'),
             ('en', 'MDM bypass setup completed', 'Next steps:'),
@@ -574,6 +465,7 @@ print_success
                 self.assertIn(title, result.stdout)
                 self.assertIn(steps, result.stdout)
                 self.assertIn('FreshAdmin', result.stdout)
+                self.assertIn('1234', result.stdout)
                 self.assertIn('/Volumes/Data/backup', result.stdout)
                 self.assertNotIn('DO_NOT_PRINT_PASSWORD', result.stdout)
                 self.assertNotIn('This does not verify', result.stdout)
@@ -592,37 +484,6 @@ apply_changes
         self.assertNotIn('Next steps:', result.stdout)
         self.assertNotIn('DO_NOT_PRINT_PASSWORD', result.stdout + result.stderr)
         self.assertIn('Apply stopped', result.stderr)
-
-    def test_cancel_action_makes_no_changes(self):
-        result = self.ok(self.interactive_main_fixture() + "main --lang en <<<$'FreshAdmin\\n\\n\\nq'; [ -z \"${passw+x}\" ]")
-        self.assertIn('Cancelled. No changes made.', result.stdout)
-
-    def test_interactive_apply_keeps_confirmation_password_and_rechecks(self):
-        body = self.interactive_main_fixture() + '''
-# Simulate root only for the mocked apply flow; no actual system writes are used.
-function [ {
-  if builtin [ "$#" -eq 4 ] && builtin [ "$1" = "$EUID" ] && builtin [ "$2" = -eq ] && builtin [ "$3" = 0 ]; then return 0; fi
-  builtin [ "$@"
-}
-apply_changes() {
-  [ "$validation_count" -eq 2 ]; [ "$inventory_count" -eq 2 ]
-  [ "$passw" = 'Unique-Long-Secret-482!' ]
-  printf 'MOCK APPLY AFTER RECHECKS\\n'
-}
-confirm_targets() { fail 'Interactive action 2 must be the only target confirmation'; }
-'''
-        inputs = '''
-FreshAdmin
-Unique-Long-Secret-482!
-Unique-Long-Secret-482!
-2
-'''.lstrip('\n')
-        for args, prefix in (('--lang zh', ''), ('--lang en', ''), ('', '')):
-            with self.subTest(args=args, prefix=prefix):
-                result = self.ok(body + 'main ' + args + " <<'EOF'\n" + prefix + inputs + 'EOF\n')
-                self.assertIn('MOCK APPLY AFTER RECHECKS', result.stdout)
-                self.assertNotIn('Unique-Long-Secret', result.stdout + result.stderr)
-
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

@@ -175,7 +175,7 @@
       </div>
       <div class="copy-area">
         <button type="button" class="copy-button" id="copyButton"><svg class="icon" aria-hidden="true"><use id="copyIcon" href="#i-copy"/></svg><span id="copyLabel">复制命令</span></button>
-        <p class="copy-note" data-i18n="copyNote">在恢复模式中打开「实用工具 → 终端」后粘贴</p>
+        <p class="copy-note" data-i18n="copyNote">粘贴到恢复模式终端后自动执行，无需输入或确认</p>
         <p class="status" id="copyStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       </div>
       <noscript><p class="no-js">浏览器未启用 JavaScript。可手动选择上方国内地址命令并复制。 / JavaScript is disabled. Select and copy the CDN command above manually.</p></noscript>
@@ -184,7 +184,7 @@
       <details>
         <summary><span data-i18n="options">更多选项</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
         <div class="option-fields">
-          <div><label for="runMode" data-i18n="modeLabel">运行方式</label><select id="runMode"><option value="interactive" data-i18n="interactive">账户设置 + 最后确认（默认）</option><option value="check" data-i18n="check">仅检查 · 不执行修改</option><option value="apply" data-i18n="apply">进入执行流程 · 仍需确认</option></select></div>
+          <div><label for="runMode" data-i18n="modeLabel">运行方式</label><select id="runMode"><option value="apply" data-i18n="automatic">自动执行（默认，无需确认）</option><option value="check" data-i18n="check">仅检查 · 不执行修改</option></select></div>
           <div><label for="scriptLanguage" data-i18n="scriptLanguage">脚本语言</label><select id="scriptLanguage"><option value="auto" data-i18n="autoLanguage">默认中文（无语言菜单）</option><option value="zh" data-i18n="chinese">中文</option><option value="en" data-i18n="english">English</option></select></div>
         </div>
       </details>
@@ -193,8 +193,8 @@
         <ol class="steps">
           <li><strong data-i18n="step1Title">备份、抹盘并重装 macOS</strong><p data-i18n="step1">先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。</p></li>
           <li><strong data-i18n="step2Title">安装后返回恢复模式</strong><p data-i18n="step2">安装完成后再次进入恢复模式，挂载或解锁目标系统卷及同组数据卷，打开「实用工具 → 终端」并连接网络。</p></li>
-          <li><strong data-i18n="step3Title">复制命令，按提示操作</strong><p data-i18n="step3">优先选择国内地址。脚本默认中文并自动匹配同组卷；接着连续输入用户名、密码及密码确认，回车可用默认值。</p></li>
-          <li><strong data-i18n="step4Title">确认结果，再重启登录</strong><p data-i18n="step4">核对目标摘要，输入 2 确认执行，回车仅检查。看到完成提示和“下一步”后，关闭终端、重启并登录。已有 apple 账户需换名；报错时先记录错误及备份位置。</p></li>
+          <li><strong data-i18n="step3Title">复制命令，按提示操作</strong><p data-i18n="step3">优先选择国内地址。脚本自动匹配同组卷，创建临时账户 apple / 1234 并完成配置，无需输入或二次确认；仅检查请加 --check。</p></li>
+          <li><strong data-i18n="step4Title">确认结果，再重启登录</strong><p data-i18n="step4">看到完成提示后，重启并用 apple / 1234 登录。先创建并登录验证自己的管理员，再删除临时账户，之后再按后续说明处理 SIP。</p></li>
         </ol>
         <p style="margin: 0 0 22px"><a class="text-link" id="readmeLink" href="https://github.com/wtone/bypass-mdm/blob/main/README.md" target="_blank" rel="noopener noreferrer"><span data-i18n="fullGuide">查看完整使用说明</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
         <p style="margin: 0 0 22px"><a class="text-link" href="https://www.bilibili.com/video/BV1zG8M6wEu5" target="_blank" rel="noopener noreferrer"><span data-i18n="referenceVideo">参考视频（哔哩哔哩）</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
@@ -203,8 +203,23 @@
         <summary><span data-i18n="postInstall">登录后的后续操作</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
         <div class="post-install">
           <article data-post-language="zh" lang="zh-CN">
-<p>手动后续流程为：先在恢复模式关闭 SIP，再登录系统处理标记和 hosts，完成后重新开启 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；正常完成后无需重复执行。需要手动核对或修复时，再使用下面的命令。</p>
-<h3>1. 手动修复前：先关闭 SIP</h3>
+<p>先登录临时账户，创建并验证自己的管理员，再删除临时账户。如需手动修复，再关闭 SIP、处理标记和 hosts，完成后恢复 SIP。当前脚本已在离线数据卷处理四个配置标记，并添加三个默认注册域名；正常完成后无需重复执行。需要手动核对或修复时，再使用下面的命令。</p>
+<h3>1. 关闭 SIP 前：先替换临时管理员账号</h3>
+<p><strong>先创建并验证自己的管理员，再删除临时 <code>apple</code>；不要先删除唯一可用账号。</strong></p>
+<ol>
+<li>用 <code>apple / 1234</code> 登录；如临时账户中已有文件，先备份。</li>
+<li>打开“系统设置”→“用户与群组”→“添加用户”，按提示验证，账户类型选择“管理员”，创建自己的全新账号和密码，不要仅重命名 <code>apple</code>。</li>
+<li>从苹果菜单退出登录，使用新账号登录，确认密码可用且显示为管理员；准备修改 SIP 时，先按下方只读命令核对新账号的 Token 和卷所有权授权，再删除临时账号。</li>
+<li>使用新管理员进入“用户与群组”，选择临时 <code>apple</code>，点击“删除用户”。按需要保留或删除其个人文件夹；先确认所需文件已备份。不要在仍登录 <code>apple</code> 时删除它，也不要用 <code>rm</code> 或 <code>dscl</code> 强制删除唯一管理员。</li>
+<li>后续恢复模式的身份验证使用新管理员账号。完成账号替换后，再按第 2 节关闭 SIP。</li>
+</ol>
+<p>如果 <code>csrutil disable</code> 提示 <code>no admin user</code>，不要把“删掉再新建账号”当作必然修复。管理员身份、Secure Token 和 Apple 芯片 Mac 的卷所有权是不同条件；修改启动安全策略涉及管理员及卷所有权。可在新账号的系统终端做以下只读检查：</p>
+<pre><code class="language-bash">sysadminctl -secureTokenStatus &quot;$(id -un)&quot;
+dscl . -read &quot;/Users/$(id -un)&quot; GeneratedUID
+sudo diskutil apfs listUsers /
+</code></pre>
+<p>核对当前账号的 Token 状态，以及其 GUID 对应的卷所有权。如果授权不满足，先按 Apple 流程处理，保留可用账号，不要反复删建或继续关闭 SIP。参考 <a href="https://support.apple.com/guide/mac-help/mh15191/mac">Apple：添加用户</a>、<a href="https://support.apple.com/guide/mac-help/mchlp1557/mac">删除用户</a>及 <a href="https://support.apple.com/guide/deployment/dep24dbdcf9e/web">Secure Token 与卷所有权</a>。</p>
+<h3>2. 手动修复前：先关闭 SIP</h3>
 <p>如果要按本节在已启动的系统中手动修复，先按以下步骤关闭 SIP；已经显示 <code>disabled</code> 时可跳过关闭步骤。正常完成脚本后不需要重复修复，也不需要为了重复操作而关闭 SIP。</p>
 <ol>
 <li>将 Mac 关机，长按电源键进入启动选项，选择“选项”→“继续”。</li>
@@ -218,9 +233,9 @@
 </ol>
 <pre><code class="language-bash">csrutil status
 </code></pre>
-<p><code>csrutil disable</code> 在恢复模式中执行；<code>csrutil status</code> 可在系统终端检查。脚本不会代你切换 SIP。后续操作完成后，按第 4 节重新开启 SIP。操作方式参考 <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple：配置 SIP</a>。</p>
-<h3>2. 核对或修复配置标记</h3>
-<p>先按第 1 节关闭 SIP 并登录系统，再执行所需的手动修复；完成后按第 4 节恢复。出现 <code>Operation not permitted</code> 等错误时先停止并核实权限。</p>
+<p><code>csrutil disable</code> 在恢复模式中执行；<code>csrutil status</code> 可在系统终端检查。脚本不会代你切换 SIP。后续操作完成后，按第 5 节重新开启 SIP。操作方式参考 <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple：配置 SIP</a>。</p>
+<h3>3. 核对或修复配置标记</h3>
+<p>先按第 2 节关闭 SIP 并登录系统，再执行所需的手动修复；完成后按第 5 节恢复。出现 <code>Operation not permitted</code> 等错误时先停止并核实权限。</p>
 <p>需要手动修复时，先备份现有配置，再将以下命令粘贴到系统终端执行。<code>sudo</code> 会要求输入当前管理员密码，输入时不显示字符：</p>
 <pre><code class="language-bash">sudo cp -Rp /var/db/ConfigurationProfiles/Settings &quot;/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
 sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &amp;&amp;
@@ -234,7 +249,7 @@ sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
 chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
 </code></pre>
 <p><code>444</code> 只是文件权限上的只读，不等于不可删除或不可重建，也不能据此保证 OTA 后不会再次出现注册提示。配置备份可能包含设备管理信息，请妥善保管。</p>
-<h3>3. 可选：编辑 hosts 扩展屏蔽列表</h3>
+<h3>4. 可选：编辑 hosts 扩展屏蔽列表</h3>
 <p>默认脚本已经添加 <code>iprofiles.apple.com</code>、<code>mdmenrollment.apple.com</code>、<code>deviceenrollment.apple.com</code>。扩展名单含有其他用途的 Apple 服务；按 <a href="https://support.apple.com/en-us/101555">Apple 联网清单</a>，需要区分以下用途：</p>
 <div class="post-table"><table>
 <thead>
@@ -279,7 +294,7 @@ sudo vi /etc/hosts
 sudo killall -HUP mDNSResponder
 </code></pre>
 <p>这份名单与 <code>--domains xiaohu-six</code> 不同，后者包含 <code>deviceservices-external.apple.com</code>，不包含 <code>gdmf.apple.com</code>。本节仅提供手动操作说明，不改变脚本的默认域名选项。若新增屏蔽后出现更新检查或激活异常，先删除本次新增的相关条目或使用备份恢复，再重试。保留备份并在 OTA 后核对实际状态，不将这些设置视为“以后绝不会再提示”的保证。</p>
-<h3>4. 恢复开启 SIP</h3>
+<h3>5. 恢复开启 SIP</h3>
 <p>若之前关闭过 SIP，完成所需操作后建议恢复开启；如果 <code>csrutil status</code> 已显示 <code>enabled</code>，保持现状即可。</p>
 <ol>
 <li>关机，长按电源键进入启动选项，选择“选项”→“继续”。</li>
@@ -294,8 +309,23 @@ sudo killall -HUP mDNSResponder
 <p>若 App Store 下载的 iPhone/iPad 应用提示启动安全策略不满足，先恢复 SIP，并按应用或系统提示检查启动安全策略；不能仅凭应用打不开就判断是 SIP 导致。命令及重启要求可参考 <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple：配置 SIP</a>。</p>
           </article>
           <article data-post-language="en" lang="en" hidden>
-<p>For the manual follow-up flow, disable SIP in Recovery first, sign in to repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.</p>
-<h3>1. Before manual repair: disable SIP</h3>
+<p>Sign in with the temporary account, create and verify your own administrator, then remove the temporary account. For any manual repair, disable SIP afterward, repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.</p>
+<h3>1. Before changing SIP: replace the temporary administrator</h3>
+<p><strong>Create and verify your own administrator before removing temporary account <code>apple</code>. Do not delete your only usable account first.</strong></p>
+<ol>
+<li>Sign in with <code>apple / 1234</code> and back up any files stored in that account.</li>
+<li>Open System Settings → Users &amp; Groups → Add User, authenticate as requested, choose Administrator, and create a new personal account and password. Do not merely rename <code>apple</code>.</li>
+<li>Log out from the Apple menu and sign in with the new account. Verify its password and Administrator role, then check the token and volume-owner authorization described below before removing the temporary account.</li>
+<li>While signed in as the new administrator, select temporary account <code>apple</code> in Users &amp; Groups and choose Delete User. Keep or delete its home folder as appropriate after backing up needed files. Do not delete the account while signed in to it or force-remove your only administrator with <code>rm</code> or <code>dscl</code>.</li>
+<li>Use the new administrator for Recovery authentication, then proceed to SIP changes in section 2.</li>
+</ol>
+<p>If <code>csrutil disable</code> reports <code>no admin user</code>, deleting and recreating accounts is not a guaranteed fix. Administrator membership, Secure Token, and Apple silicon volume ownership are distinct; startup security changes involve administrator and owner authorization. Run these read-only checks in the new account's system Terminal:</p>
+<pre><code class="language-bash">sysadminctl -secureTokenStatus &quot;$(id -un)&quot;
+dscl . -read &quot;/Users/$(id -un)&quot; GeneratedUID
+sudo diskutil apfs listUsers /
+</code></pre>
+<p>Check the current account's token state and the ownership associated with its GUID. Resolve missing authorization through Apple's documented procedures before further SIP changes; retain usable accounts instead of repeatedly deleting and recreating them. See Apple's guides for <a href="https://support.apple.com/guide/mac-help/mh15191/mac">adding users</a>, <a href="https://support.apple.com/guide/mac-help/mchlp1557/mac">deleting users</a>, and <a href="https://support.apple.com/guide/deployment/dep24dbdcf9e/web">tokens and volume ownership</a>.</p>
+<h3>2. Before manual repair: disable SIP</h3>
 <p>If you intend to perform the manual repair below in the booted system, disable SIP first using these steps. Skip the disabling step if it already reports <code>disabled</code>. A successful script run does not require repeating repairs or disabling SIP just to repeat them.</p>
 <ol>
 <li>Shut down, hold the power button for startup options, and choose Options → Continue.</li>
@@ -309,9 +339,9 @@ sudo killall -HUP mDNSResponder
 </ol>
 <pre><code class="language-bash">csrutil status
 </code></pre>
-<p>Run <code>csrutil disable</code> in Recovery; <code>csrutil status</code> can check the state in the normal system. The script does not switch SIP for you. Re-enable it in section 4 after completing the work. See <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple's SIP configuration guide</a>.</p>
-<h3>2. Inspect or repair configuration markers</h3>
-<p>Disable SIP and sign in as described in section 1, perform the needed manual repair, then restore SIP in section 4. Stop and check permissions if a command reports <code>Operation not permitted</code>.</p>
+<p>Run <code>csrutil disable</code> in Recovery; <code>csrutil status</code> can check the state in the normal system. The script does not switch SIP for you. Re-enable it in section 5 after completing the work. See <a href="https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html">Apple's SIP configuration guide</a>.</p>
+<h3>3. Inspect or repair configuration markers</h3>
+<p>Disable SIP and sign in as described in section 2, perform the needed manual repair, then restore SIP in section 5. Stop and check permissions if a command reports <code>Operation not permitted</code>.</p>
 <p>For manual repair, back up the existing configuration and paste the following into the normal system Terminal. <code>sudo</code> asks for your current administrator password; typed characters remain hidden:</p>
 <pre><code class="language-bash">sudo cp -Rp /var/db/ConfigurationProfiles/Settings &quot;/var/db/ConfigurationProfiles/Settings.before-manual-$(date +%Y%m%d-%H%M%S)&quot; &amp;&amp;
 sudo rm -f /var/db/ConfigurationProfiles/Settings/.cloudConfigHasActivationRecord &amp;&amp;
@@ -325,7 +355,7 @@ sudo touch /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound
 chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /var/db/ConfigurationProfiles/Settings/.cloudConfigRecordNotFound'
 </code></pre>
 <p>Mode <code>444</code> is an ordinary file permission, not protection against deletion or recreation. It does not guarantee that enrollment prompts cannot return after OTA updates. Keep configuration backups private.</p>
-<h3>3. Optional: extend the hosts blocklist</h3>
+<h3>4. Optional: extend the hosts blocklist</h3>
 <p>The default script already adds <code>iprofiles.apple.com</code>, <code>mdmenrollment.apple.com</code>, and <code>deviceenrollment.apple.com</code>. The extended list includes Apple services with other purposes. See <a href="https://support.apple.com/en-us/101555">Apple's network requirements</a>:</p>
 <div class="post-table"><table>
 <thead>
@@ -370,7 +400,7 @@ sudo vi /etc/hosts
 sudo killall -HUP mDNSResponder
 </code></pre>
 <p>This list differs from <code>--domains xiaohu-six</code>, which includes <code>deviceservices-external.apple.com</code> and excludes <code>gdmf.apple.com</code>. These are manual instructions; the script's default host selection stays the same. If added blocks cause update-check or activation issues, remove the relevant new entries or restore your backup before retrying. Keep backups and review the actual state after OTA updates; these settings do not guarantee that prompts will never return.</p>
-<h3>4. Re-enable SIP</h3>
+<h3>5. Re-enable SIP</h3>
 <p>If you previously disabled SIP, restore it after completing the necessary work. If <code>csrutil status</code> already reports <code>enabled</code>, leave it enabled.</p>
 <ol>
 <li>Shut down, hold the power button for startup options, and choose Options → Continue.</li>
@@ -387,8 +417,8 @@ sudo killall -HUP mDNSResponder
         </div>
       </details>
     </section>
-    <div class="defaults"><span><span data-i18n="defaultUser">默认用户名</span><b>apple</b></span><span><span data-i18n="defaultPassword">默认密码</span><b>1234</b></span><span><span data-i18n="defaultAction">默认操作</span><b data-i18n="checkShort">仅检查</b></span></div>
-    <p class="footnote" data-i18n="footnote">可输入任意自定义密码；建议登录后修改默认密码。已有 apple 账户时，请换用全新用户名。</p>
+    <div class="defaults"><span><span data-i18n="defaultUser">默认用户名</span><b>apple</b></span><span><span data-i18n="defaultPassword">默认密码</span><b>1234</b></span><span><span data-i18n="defaultAction">默认操作</span><b data-i18n="applyShort">自动执行</b></span></div>
+    <p class="footnote" data-i18n="footnote">默认命令会直接修改配置。登录后先创建并验证自己的管理员，再删除临时账户。已有同名账户时会停止。</p>
   </main>
   <footer><span>wtone / bypass-mdm · MIT License</span><a href="https://github.com/wtone/bypass-mdm" target="_blank" rel="noopener noreferrer"><span data-i18n="openSource">开源项目</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></footer>
   <script>
@@ -403,30 +433,30 @@ sudo killall -HUP mDNSResponder
         title: 'Bypass MDM v3 · 一键复制命令', eyebrow: 'APPLE 芯片 MAC · 恢复模式', subtitle: '复制命令，粘贴到恢复模式终端，按提示继续。',
         cdn: '国内地址', github: 'GitHub 地址', recommended: '推荐', download: '下载脚本', copy: '复制命令', copied: '已复制',
         cdnInfo: '国内 CDN 下载，适合无法访问 GitHub 的网络。', githubInfo: '从 GitHub 项目下载，需要能够访问 GitHub 下载服务。',
-        copyNote: '在恢复模式中打开「实用工具 → 终端」后粘贴', copiedStatus: '命令已复制，可前往终端粘贴。', manual: '自动复制不可用，命令已选中，请按 ⌘C 或 Ctrl+C 复制。',
-        options: '更多选项', modeLabel: '运行方式', interactive: '账户设置 + 最后确认（默认）', check: '仅检查 · 不执行修改', apply: '进入执行流程 · 仍需确认',
+        copyNote: '粘贴到恢复模式终端后自动执行，无需输入或确认', copiedStatus: '命令已复制，可前往终端粘贴。', manual: '自动复制不可用，命令已选中，请按 ⌘C 或 Ctrl+C 复制。',
+        options: '更多选项', modeLabel: '运行方式', automatic: '自动执行（默认，无需确认）', check: '仅检查 · 不执行修改',
         scriptLanguage: '脚本语言', autoLanguage: '默认中文（无语言菜单）', chinese: '中文', english: 'English',
         postInstall: '登录后的后续操作', guide: '安装与使用', step1Title: '备份、抹盘并重装 macOS', step1: '先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。',
         step2Title: '安装后返回恢复模式', step2: '安装完成后再次进入恢复模式，挂载或解锁目标系统卷及同组数据卷，打开「实用工具 → 终端」并连接网络。',
-        step3Title: '复制命令，按提示操作', step3: '优先选择国内地址。脚本默认中文并自动匹配同组卷；接着连续输入用户名、密码及密码确认，回车可用默认值。',
-        step4Title: '确认结果，再重启登录', step4: '核对目标摘要，输入 2 确认执行，回车仅检查。看到完成提示和“下一步”后，关闭终端、重启并登录。已有 apple 账户需换名；报错时先记录错误及备份位置。',
-        fullGuide: '查看完整使用说明', referenceVideo: '参考视频（哔哩哔哩）', defaultUser: '默认用户名', defaultPassword: '默认密码', defaultAction: '默认操作', checkShort: '仅检查', openSource: '开源项目',
-        footnote: '可输入任意自定义密码；建议登录后修改默认密码。已有 apple 账户时，请换用全新用户名。',
+        step3Title: '复制命令，按提示操作', step3: '优先选择国内地址。脚本自动匹配同组卷，创建临时账户 apple / 1234 并完成配置，无需输入或二次确认；仅检查请加 --check。',
+        step4Title: '确认结果，再重启登录', step4: '看到完成提示后，重启并用 apple / 1234 登录。先创建并登录验证自己的管理员，再删除临时账户，之后再按后续说明处理 SIP。',
+        fullGuide: '查看完整使用说明', referenceVideo: '参考视频（哔哩哔哩）', defaultUser: '默认用户名', defaultPassword: '默认密码', defaultAction: '默认操作', applyShort: '自动执行', openSource: '开源项目',
+        footnote: '默认命令会直接修改配置。登录后先创建并验证自己的管理员，再删除临时账户。已有同名账户时会停止。',
         nav: '主导航', commandSection: '命令复制', tablist: '下载地址', command: '终端命令', optionsSection: '使用选项和说明', repo: 'GitHub 项目'
       },
       en: {
         title: 'Bypass MDM v3 · Copy the command', eyebrow: 'APPLE SILICON MAC · RECOVERY MODE', subtitle: 'Copy the command. Paste it into Recovery Terminal. Follow the prompts.',
         cdn: 'China CDN', github: 'GitHub', recommended: 'Recommended', download: 'Download', copy: 'Copy command', copied: 'Copied',
         cdnInfo: 'Mainland China CDN, for networks that cannot access GitHub.', githubInfo: 'Download from the GitHub project. Requires access to GitHub downloads.',
-        copyNote: 'Open Utilities → Terminal in macOS Recovery, then paste', copiedStatus: 'Command copied. You can now paste it into Terminal.', manual: 'Automatic copy is unavailable. The command is selected; press ⌘C or Ctrl+C to copy.',
-        options: 'More options', modeLabel: 'Run mode', interactive: 'Account setup + final decision (default)', check: 'Check only · No changes', apply: 'Apply flow · Confirmation required',
+        copyNote: 'Paste into Recovery Terminal to apply automatically, without prompts', copiedStatus: 'Command copied. You can now paste it into Terminal.', manual: 'Automatic copy is unavailable. The command is selected; press ⌘C or Ctrl+C to copy.',
+        options: 'More options', modeLabel: 'Run mode', automatic: 'Automatic apply (default, no confirmation)', check: 'Check only · No changes',
         scriptLanguage: 'Script language', autoLanguage: 'Chinese by default (no language menu)', chinese: '中文', english: 'English',
         postInstall: 'After signing in', guide: 'Installation & usage', step1Title: 'Back up, erase, and reinstall macOS', step1: 'Back up your data first. Shut down, then hold the power button and choose Options → Continue. Verify the target in Disk Utility before erasing its volume group and reinstalling macOS. Erasing deletes files and accounts in that installation.',
         step2Title: 'Return to Recovery after installation', step2: 'Start Recovery again. Mount or unlock the offline System and matching Data volumes, open Utilities → Terminal, and connect to the internet.',
-        step3Title: 'Copy the command and follow the prompts', step3: 'Use the China CDN when GitHub is unavailable. The script defaults to Chinese and automatically matches volume groups. Enter the username and password together; Return accepts defaults.',
-        step4Title: 'Review the result, then restart and sign in', step4: 'Review the summary and enter 2 to confirm and apply, or Return to check only. Follow the completion screen and Next steps to close Terminal, restart, and sign in. Choose a new name if apple exists; record errors and the backup path before retrying.',
-        fullGuide: 'Read the full guide', referenceVideo: 'Reference video (Bilibili)', defaultUser: 'Default username', defaultPassword: 'Default password', defaultAction: 'Default action', checkShort: 'Check only', openSource: 'Open source',
-        footnote: 'Any custom password is allowed. Change the default password after signing in. Choose an unused username if apple already exists.',
+        step3Title: 'Copy the command and follow the prompts', step3: 'Use the China CDN when needed. The script matches volumes, creates temporary account apple / 1234, and applies changes automatically without input or confirmation. Use --check for a read-only run.',
+        step4Title: 'Review the result, then restart and sign in', step4: 'After completion, restart and sign in with apple / 1234. Create and verify your own administrator before removing the temporary account, then follow the SIP instructions below.',
+        fullGuide: 'Read the full guide', referenceVideo: 'Reference video (Bilibili)', defaultUser: 'Default username', defaultPassword: 'Default password', defaultAction: 'Default action', applyShort: 'Automatic apply', openSource: 'Open source',
+        footnote: 'The default command applies changes directly. Create and verify your own administrator before deleting the temporary account. Existing account names stop execution.',
         nav: 'Main navigation', commandSection: 'Copy a command', tablist: 'Download source', command: 'Terminal command', optionsSection: 'Options and instructions', repo: 'GitHub repository'
       }
     };
@@ -455,7 +485,7 @@ sudo killall -HUP mDNSResponder
       status.classList.remove('error');
     }
     function renderCommand() {
-      const modeFlags = { interactive: '', check: ' --check', apply: ' --apply' };
+      const modeFlags = { apply: '', check: ' --check' };
       const languageFlags = { auto: '', zh: ' --lang zh', en: ' --lang en' };
       commandText.value = 'cd /tmp && curl -fsSL ' + sources[source] + ' -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh' + (modeFlags[runMode.value] || '') + (languageFlags[scriptLanguage.value] || '');
       document.getElementById('sourceInfo').textContent = messages[pageLanguage][source + 'Info'];

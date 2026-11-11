@@ -41,7 +41,7 @@ ls /Volumes
 
 Identify the **System volume** and matching **Data volume** in the same APFS volume group. Both must be mounted. Use Disk Utility to mount or unlock them first if needed.
 
-The script automatically uses the first eligible mounted offline System volume and the first eligible Data volume in the same APFS group. There are no volume menus or Return prompts. The selected paths and device IDs are displayed; no eligible candidate means the script stops. Use `--system 'path' --data 'path'` for different targets, and review them before the final confirmation.
+The script automatically uses the first eligible mounted offline System volume and the first eligible Data volume in the same APFS group. There are no volume menus or Return prompts. The selected paths and device IDs are displayed; no eligible candidate means the script stops. Specify different targets with `--system 'path' --data 'path'` before running; add `--check` to review them without changes.
 
 ## 4. Download and run in one line
 
@@ -63,26 +63,20 @@ If your network can access GitHub downloads, use the project source directly:
 cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
 ```
 
-Both download methods use the same flow: Chinese by default, automatic System/Data matching, then username, password, and password confirmation together. A target summary and one final action menu follow:
+Both addresses use automatic execution with no interactive input. The script defaults to Chinese, matches offline volumes in the same group, creates temporary administrator `apple` with fixed password `1234`, and applies the configuration after validation. **No username, password, Return, or secondary confirmation is requested; the default command writes changes directly.**
 
-- `1` or Return: check only; no account or configuration changes.
-- `2`: confirm the displayed volumes and account, then apply changes without another disk confirmation.
-- `q`: cancel; Ctrl+C also cancels input prompts.
+Append `--check` for a read-only preflight without account or configuration changes. `--apply` remains a compatibility alias for the default automatic mode and cannot be combined with `--check`.
 
-Append `--check` for check-only mode without a password prompt. Append `--apply` to skip the action menu: enter the account details together, then confirm the target disks once at the end.
-
-| Prompt | Value used on Return | Custom input |
+| Setting | Automatic value | Optional command argument |
 |---|---|---|
-| Language | Chinese automatically; no input | Append `--lang en` for English |
-| System volume | First eligible volume automatically; no input | Specify `--system 'path'` |
-| Data volume | First eligible volume in the System group automatically; no input | Specify `--data 'path'` |
-| Username | `apple` | Enter an unused new username |
-| Final decision | Check only | Enter `2` to confirm targets and apply; `q` cancels |
-| Final confirmation with `--apply` | Displayed `APPLY SystemDeviceID DataDeviceID` | Review and press Return, or type the exact confirmation; Ctrl+C cancels |
-| Password | `1234` | Enter any custom password |
-| Repeat password | Password chosen in the previous step | Enter the same password again |
+| Language | Chinese | `--lang en` for English |
+| System volume | First eligible mounted offline System volume | `--system 'path'` |
+| Data volume | First eligible Data volume in the same APFS group | `--data 'path'` |
+| Temporary username | `apple` | `--username UnusedName` for another temporary name |
+| Temporary password | Fixed `1234` | No password input is requested or accepted |
+| Run mode | Apply automatically, without another confirmation | `--check` for check-only |
 
-Pressing Return throughout completes a read-only check. Standard mode collects account details first and discards the password if you choose check-only or cancel; `--check` skips password input entirely. Automatic selection uses the first eligible candidate, so review the targets before the final decision.
+Volume-group, role, path, existing-account, and UID checks remain, including rechecks before writing. No eligible volume, an existing account name, or a failed check stops execution; existing accounts are never reused, overwritten, or reset. Specify different target disks with arguments before running.
 
 If already downloaded, run it separately:
 
@@ -101,23 +95,40 @@ Append `--lang en` to the end of the one-line download command to start directly
 
 Files in `/tmp` may disappear after a restart. Download again if needed.
 
-## 5. Complete the prompts
+## 5. Automatic execution and first sign-in
 
-1. The script uses Chinese by default and automatically matches System and Data volumes. Mount or unlock them and retry if none is available.
-2. Enter the username and password together. Return uses `apple` and `1234`, or enter custom values. Return again confirms the chosen password. Conflicting usernames must be changed; existing accounts are not reused.
-3. Review the paths, device IDs, and username. Enter `2` to confirm and apply, Return to check only, or `q` to cancel. With `--apply`, accept the final `APPLY …` prompt instead.
-4. Wait for “MDM bypass setup completed!” and “Next steps:”. Investigate any reported error first.
-5. Follow the next steps to close Terminal, restart, and sign in with the new account and chosen password. The completion summary includes the backup location and never displays a custom password.
+1. Run the one-line command in Recovery Terminal. Volume selection and validation are automatic, with no input or secondary confirmation. Mount or unlock the volumes and retry if none is available.
+2. Wait for “MDM bypass setup completed!” and “Next steps:”. Investigate errors before treating the run as successful.
+3. Close Terminal, restart, and sign in with temporary username `apple` and password `1234`. The completion summary also shows the backup location.
+4. Follow section 6.1 to create and verify your own administrator, then remove the temporary account before proceeding to SIP changes.
 
-Username: 1–31 characters, starting with an ASCII letter, using only letters, digits, `_`, or `-`. It must not conflict with an existing account or home directory.
-
-Password: defaults to `1234`. There are no strength checks for length, character classes, or inclusion of the username; any custom password is accepted by the script. Empty input selects the default rather than an empty password. Save custom passwords securely; their contents are not displayed. `1234` is weak: change it after signing in. If the macOS password-setting command rejects a password, the script reports an error and stops.
+The temporary account is for initial access, with fixed password `1234`. Choose your personal administrator name and password in Users & Groups after signing in. If `--username` selected another temporary name, substitute it for `apple` below.
 
 ## 6. Follow-up after signing in
 
-For the manual follow-up flow, disable SIP in Recovery first, sign in to repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.
+Sign in with the temporary account, create and verify your own administrator, then remove the temporary account. For any manual repair, disable SIP afterward, repair markers and hosts, then re-enable SIP. The script already handles the four configuration markers on the offline Data volume and adds three enrollment hosts. A successful run does not require repeating those operations. Use the commands below for manual inspection or repair when needed.
 
-### 6.1 Before manual repair: disable SIP
+### 6.1 Before changing SIP: replace the temporary administrator
+
+**Create and verify your own administrator before removing temporary account `apple`. Do not delete your only usable account first.**
+
+1. Sign in with `apple / 1234` and back up any files stored in that account.
+2. Open System Settings → Users & Groups → Add User, authenticate as requested, choose Administrator, and create a new personal account and password. Do not merely rename `apple`.
+3. Log out from the Apple menu and sign in with the new account. Verify its password and Administrator role, then check the token and volume-owner authorization described below before removing the temporary account.
+4. While signed in as the new administrator, select temporary account `apple` in Users & Groups and choose Delete User. Keep or delete its home folder as appropriate after backing up needed files. Do not delete the account while signed in to it or force-remove your only administrator with `rm` or `dscl`.
+5. Use the new administrator for Recovery authentication, then proceed to SIP changes in section 6.2.
+
+If `csrutil disable` reports `no admin user`, deleting and recreating accounts is not a guaranteed fix. Administrator membership, Secure Token, and Apple silicon volume ownership are distinct; startup security changes involve administrator and owner authorization. Run these read-only checks in the new account's system Terminal:
+
+```bash
+sysadminctl -secureTokenStatus "$(id -un)"
+dscl . -read "/Users/$(id -un)" GeneratedUID
+sudo diskutil apfs listUsers /
+```
+
+Check the current account's token state and the ownership associated with its GUID. Resolve missing authorization through Apple's documented procedures before further SIP changes; retain usable accounts instead of repeatedly deleting and recreating them. See Apple's guides for [adding users](https://support.apple.com/guide/mac-help/mh15191/mac), [deleting users](https://support.apple.com/guide/mac-help/mchlp1557/mac), and [tokens and volume ownership](https://support.apple.com/guide/deployment/dep24dbdcf9e/web).
+
+### 6.2 Before manual repair: disable SIP
 
 If you intend to perform the manual repair below in the booted system, disable SIP first using these steps. Skip the disabling step if it already reports `disabled`. A successful script run does not require repeating repairs or disabling SIP just to repeat them.
 
@@ -135,11 +146,11 @@ csrutil disable
 csrutil status
 ```
 
-Run `csrutil disable` in Recovery; `csrutil status` can check the state in the normal system. The script does not switch SIP for you. Re-enable it in section 6.4 after completing the work. See [Apple's SIP configuration guide](https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html).
+Run `csrutil disable` in Recovery; `csrutil status` can check the state in the normal system. The script does not switch SIP for you. Re-enable it in section 6.5 after completing the work. See [Apple's SIP configuration guide](https://developer.apple.com/library/archive/documentation/Security/Conceptual/System_Integrity_Protection_Guide/ConfiguringSystemIntegrityProtection/ConfiguringSystemIntegrityProtection.html).
 
-### 6.2 Inspect or repair configuration markers
+### 6.3 Inspect or repair configuration markers
 
-Disable SIP and sign in as described in section 6.1, perform the needed manual repair, then restore SIP in section 6.4. Stop and check permissions if a command reports `Operation not permitted`.
+Disable SIP and sign in as described in section 6.2, perform the needed manual repair, then restore SIP in section 6.5. Stop and check permissions if a command reports `Operation not permitted`.
 
 For manual repair, back up the existing configuration and paste the following into the normal system Terminal. `sudo` asks for your current administrator password; typed characters remain hidden:
 
@@ -161,7 +172,7 @@ chmod 444 /var/db/ConfigurationProfiles/Settings/.cloudConfigProfileInstalled /v
 
 Mode `444` is an ordinary file permission, not protection against deletion or recreation. It does not guarantee that enrollment prompts cannot return after OTA updates. Keep configuration backups private.
 
-### 6.3 Optional: extend the hosts blocklist
+### 6.4 Optional: extend the hosts blocklist
 
 The default script already adds `iprofiles.apple.com`, `mdmenrollment.apple.com`, and `deviceenrollment.apple.com`. The extended list includes Apple services with other purposes. See [Apple's network requirements](https://support.apple.com/en-us/101555):
 
@@ -199,7 +210,7 @@ sudo killall -HUP mDNSResponder
 
 This list differs from `--domains xiaohu-six`, which includes `deviceservices-external.apple.com` and excludes `gdmf.apple.com`. These are manual instructions; the script's default host selection stays the same. If added blocks cause update-check or activation issues, remove the relevant new entries or restore your backup before retrying. Keep backups and review the actual state after OTA updates; these settings do not guarantee that prompts will never return.
 
-### 6.4 Re-enable SIP
+### 6.5 Re-enable SIP
 
 If you previously disabled SIP, restore it after completing the necessary work. If `csrutil status` already reports `enabled`, leave it enabled.
 
@@ -222,16 +233,16 @@ If an iPhone/iPad app from the App Store reports an incompatible startup securit
 | `--lang zh` / `--lang en` | Set Chinese or English; Chinese is the default and there is no language menu |
 | `--system 'path'` | Optional; omit to automatically select the first eligible System volume |
 | `--data 'path'` | Optional; omit to automatically select the first eligible matching Data volume |
-| `--username name` | Optional; omit for a prompt with default `apple`; account-conflict checks still apply |
-| `--check` | Check only without asking for a password; cannot be combined with `--apply` |
-| `--apply` | Enter account details together, then confirm the target disks once and apply |
+| `--username name` | Optional temporary name; defaults to `apple`, always with password `1234`; conflicts stop execution |
+| `--check` | Explicitly read-only; no account or configuration changes; cannot be combined with `--apply` |
+| `--apply` | Compatibility alias for the default noninteractive apply mode |
 | `--domains conservative` | Default three-host selection; normally leave the default |
 | `--domains xiaohu-six` | Six-host selection including activation-related services; may affect normal activation. Switching back does not remove earlier blocks |
 | `--help` | Display help, e.g. `bash /tmp/bypass-mdm-v3.sh --help` |
 
 To select six hosts, append `--domains xiaohu-six` to the execution command.
 
-You can still specify all targets with `--system`, `--data`, and `--username`. Providing all three without `--apply` remains check-only. Interactive selection requires a terminal: download the file and run it directly instead of using `curl ... | bash`.
+You can still specify all targets with `--system`, `--data`, and `--username`. Execution is automatic whether or not all target arguments are provided; only explicit `--check` is read-only. Download the script as a file and run it.
 
 ## 8. Troubleshooting
 
@@ -244,7 +255,7 @@ You can still specify all targets with `--system`, `--data`, and `--username`. P
 | Username, UID, or home conflict | Use an unused name; after an interrupted run, inspect any partially created account first |
 | Repeated “Stopped at line …” notices or account-inventory validation failure | Download the current script instead of reusing an old copy. If the China address still serves old content, synchronize the CDN file and refresh its cache. Record any remaining error; do not bypass account validation |
 | Insufficient permission or unwritable target | Check `id -u`: apply requires `0`; also review unlock state and volume status |
-| Password typing looks blank | Expected: Return selects `1234`, then Return confirms it; alternatively enter and confirm a custom password |
+| Account `apple` already exists | The script stops rather than resetting an existing account. Do not rerun completed setup unnecessarily; use `--username` for another unused temporary name only when needed |
 | Retrying after interruption or failure | Record the error and backup path, then inspect the state before retrying with another name |
 
 The script prints its configuration-backup location under the target Data volume's `private/var/db/mdm-reviewed-backup.XXXXXX/`. This is not a full backup and there is no automatic rollback; a failure can leave partial changes.
