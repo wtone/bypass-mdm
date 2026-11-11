@@ -1,207 +1,234 @@
-# Bypass MDM for macOS 💻
+# Bypass MDM for macOS
 
-![mdm-screen](https://raw.githubusercontent.com/assafdori/bypass-mdm/main/mdm-screen.png)
+**English** | [简体中文](README-CN.md)
 
-A script to bypass Mobile Device Management (MDM) enrollment during macOS setup.
+This guide covers **`wtone-bypass-mdm-v2.sh`**, the safety-focused derivative of the original v2 script. It adds explicit target-volume selection, stronger password requirements, account-conflict checks, and configuration backups.
 
-## 🚨 Update: February 3, 2026
+**The default mode is a read-only preflight. Changes require `--apply`.** This derivative has not been tested on a real Mac or in macOS Recovery. It does not guarantee MDM removal, Activation Lock removal, or release from an organization's inventory.
 
-**Version 2 Now Available!** Due to the high number of requests and repreated issues reported, I've released a new version of the script with significant improvements:
+The existing `bypass-mdm-v2.sh` and `bypass-mdm.sh` remain unchanged. Their original instructions are preserved in [the legacy README](docs/README-legacy.md); their defaults and interaction differ from this derivative. Do not mix the two sets of commands.
 
-### What's New in v2:
+## 1. Files and provenance
 
-- **Automatic Volume Detection** - No longer requires specific volume names like "Macintosh HD"
-- **Comprehensive Error Handling** - Clear error messages and validation at every step
-- **Input Validation** - Validates usernames and passwords to prevent common mistakes
-- **UID Conflict Detection** - Automatically finds available UIDs to avoid conflicts
-- **Better User Experience** - Color-coded output, progress indicators, and helpful feedback
+| File | Purpose |
+|---|---|
+| `wtone-bypass-mdm-v2.sh` | Safety-focused derivative documented here |
+| `README.md` | English usage guide |
+| `README-CN.md` | Chinese usage guide |
+| `docs/README-legacy.md` | Original repository README, preserved without content changes |
+| `bypass-mdm-v2.sh` / `bypass-mdm.sh` | Existing scripts, retained unchanged |
 
-The instructions below use **v2 by default** (recommended). If you experience issues, you can still use the original version by replacing `bypass-mdm-v2.sh` with `bypass-mdm.sh` in the commands.
+The derivative is based on [upstream v2 at commit 60583be](https://github.com/wtone/bypass-mdm/blob/60583be37d41f314cb04a99e260071fc31a2eaf4/bypass-mdm-v2.sh). It retains the core local account, hosts, and setup-marker operations while changing their checks and execution flow.
 
----
+SHA-256 of the derivative shipped with this guide:
 
-## ✨ Features
+```text
+c195c142b7828fbedf457ceb7e3865191d4ade1d2274a5b862218330780c4404
+```
 
-- **🔍 Smart Volume Detection** - Automatically detects system and data volumes regardless of custom names
-- **✅ Input Validation** - Validates usernames and passwords to prevent common errors
-- **🛡️ Comprehensive Error Handling** - Clear error messages guide you through any issues
-- **🎯 UID Conflict Resolution** - Automatically finds available user IDs to avoid conflicts
-- **📊 Real-time Progress** - Color-coded status messages show exactly what's happening
-- **🔄 Duplicate Prevention** - Checks for existing entries to avoid duplicates
-
-## ⚠️ Prerequisites
-
-- **It is strongly recommended to erase the hard drive prior to starting**
-- **It is recommended to reinstall macOS using an external flash drive**
-- **English language recommended** (not required for v2, but recommended)
-
-## 📋 Installation & Usage
-
-### Step-by-Step Instructions
-
-Follow these steps to bypass MDM enrollment during a fresh macOS installation:
-
-> **Starting Point:** You've reached the MDM enrollment screen during macOS setup
-
-**1.** **Force Shutdown** - Long press the Power button to shut down your Mac
-
-**2.** **Boot into Recovery Mode:**
-
-- **Apple Silicon Mac**: Hold Power button until "Loading startup options" appears
-- **Intel-based Mac**: Hold <kbd>CMD</kbd> + <kbd>R</kbd> during boot
-
-**3.** **Connect to WiFi** to activate your Mac
-
-**4.** **Open Terminal** in Recovery Mode:
-
-- Click **Utilities** in the menu bar
-- Select **Terminal**
-
-**5.** **Run the bypass script** - Copy and paste this command into Terminal:
+Check your local file on macOS:
 
 ```bash
-curl -L https://raw.githubusercontent.com/assafdori/bypass-mdm/main/bypass-mdm-v2.sh -o bypass-mdm.sh && chmod +x ./bypass-mdm.sh && ./bypass-mdm.sh
+shasum -a 256 ./wtone-bypass-mdm-v2.sh
 ```
 
-**6.** **Volume Detection** - The script will automatically detect your volumes:
+A matching checksum confirms identical file contents, not safety certification. Editing the script changes its checksum.
 
-- System Volume (e.g., "Macintosh HD", "MacOS", or your custom name)
-- Data Volume (e.g., "Data", "Macintosh HD - Data", or your custom name)
+## 2. Preparation
 
-**7.** **Select Option 1** - "Bypass MDM from Recovery"
+- Use macOS Recovery with an offline macOS installation. Its System and Data volumes must already be mounted, unlocked where necessary, and accessible.
+- Back up important data first. The script's configuration backup is not a full disk backup.
+- Transfer the script to a location accessible from Recovery, such as external storage, and open Terminal in the directory containing it.
+- Choose a new, unused username and a unique password generated by a password manager.
+- Do not modify accounts, unmount volumes, or change mounts concurrently with the script.
 
-**8.** **Create Temporary User** - Configure the admin account (or press Enter for defaults):
+For an Apple silicon Mac, including M3 Pro, shut down, then hold the power button until startup options appear. Choose Options, then Continue. See [Apple's Recovery instructions](https://support.apple.com/guide/mac-help/macos-recovery-a-mac-apple-silicon-mchl82829c17/mac). Open Terminal in Recovery to continue.
 
-- **Fullname**: Apple (default)
-- **Username**: Apple (default)
-- **Password**: 1234 (default)
+The script does not mount, unlock, or rename volumes, disable system protections, or automatically reboot. Missing information causes it to stop rather than guess.
 
-> 💡 **Tip:** The script validates your input and will prompt you to retry if there are issues
+## 3. Identify the target volumes
 
-**9.** **Wait for Completion** - You'll see progress messages:
-
-- ✓ Validating system paths
-- ✓ Creating user account
-- ✓ Blocking MDM domains
-- ✓ Configuring MDM bypass settings
-
-**10.** **Reboot** - When you see "MDM Bypass Completed Successfully", close Terminal and reboot
-
----
-
-### 🔄 Post-Installation Steps
-
-**11.** **Login** with the temporary account:
-
-- Username: `Apple` (or your custom username)
-- Password: `1234` (or your custom password)
-
-**12.** **Skip Setup** - Skip all prompts (Apple ID, Siri, Touch ID, Location Services)
-
-**13.** **Create Real Account:**
-
-- Navigate to **System Settings > Users and Groups**
-- Create your actual Admin account with your preferred credentials
-
-**14.** **Switch Accounts** - Log out and sign in to your new account
-
-**15.** **Setup Properly** - Now configure Apple ID, Siri, Touch ID, etc.
-
-**16.** **Clean Up** - Delete the temporary Apple profile:
-
-- Go to **System Settings > Users and Groups**
-- Select the Apple profile and click the minus (−) button
-
-**17.** **🎉 Done!** You're MDM free!
-
----
-
-## 🔧 Troubleshooting
-
-### Volume Detection Issues
-
-**Problem:** Script fails to detect volumes
-
-**Solutions:**
-
-- Ensure you're in Recovery Mode (not booted into macOS normally)
-- Verify macOS is installed on your drive
-- Check your drive is visible in Disk Utility
-- Try the original version (legacy, hardcoded volume names):
+Inspect the APFS inventory, volume groups, and mount points:
 
 ```bash
-curl -L https://raw.githubusercontent.com/assafdori/bypass-mdm/main/bypass-mdm.sh -o bypass-mdm.sh && chmod +x ./bypass-mdm.sh && ./bypass-mdm.sh
+diskutil apfs list
+diskutil apfs listVolumeGroups
+ls /Volumes
 ```
 
-### Permission Errors
+| Argument | Required target |
+|---|---|
+| `--system` | The complete mount path of the System-role volume |
+| `--data` | The complete mount path of the Data-role volume in the same APFS volume group |
 
-**Problem:** Permission denied errors
+Both paths must be volume mount points directly below `/Volumes`, not subdirectories. Quote names containing spaces. Do not assume a volume is named `Macintosh HD`, infer grouping from similar names, or reuse device numbers from a previous boot.
 
-**Solutions:**
+The script checks exact mount points, device identifiers, System/Data roles, and a shared APFS volume-group UUID. It rejects the currently booted macOS volume group. These checks establish a matching pair; they cannot determine whether that installation is the one you intended to change. Verify the target yourself.
 
-- Confirm you're running from Terminal in Recovery Mode
-- Recovery Mode automatically provides elevated privileges
-- Make sure the script is executable: `chmod +x bypass-mdm.sh`
+## 4. Start with a read-only preflight
 
-### Script Won't Execute
-
-**Problem:** Script doesn't run
-
-**Solutions:**
+Show help:
 
 ```bash
-# Make sure it's executable
-chmod +x bypass-mdm.sh
-
-# Run it again
-./bypass-mdm.sh
+bash ./wtone-bypass-mdm-v2.sh --help
 ```
 
-### Invalid Username or Password
+Preview the default three-domain profile:
 
-**Problem:** Script rejects your username/password
-
-**Validation Rules:**
-
-- **Username:** Letters, numbers, underscore, hyphen only; must start with letter or underscore
-- **Password:** Minimum 4 characters
-- Press Enter to use defaults if unsure
-
----
-
-## 📦 Version Information
-
-| Version            | Description                                       | Status             |
-| ------------------ | ------------------------------------------------- | ------------------ |
-| `bypass-mdm-v2.sh` | Enhanced version with auto-detection & validation | ✅ **Recommended** |
-| `bypass-mdm.sh`    | Original version with hardcoded volume names      | ⚠️ Legacy          |
-
-### ❤️ Optional Contributions
-
-Many people have reached out asking how to say thank you for saving their Mac. **This is completely optional and not expected!** If you'd like to contribute, crypto donations are appreciated.
-
-People have forked this repository and put the script behind a pay-wall. I do not care at all. Once again, crypto contributions are not expected, but feel free if you want to.
-
-**Bitcoin (BTC):**
-
-```
-bc1qzguh4908r7wguz20ylzeggya9d38t6hega5ppf
+```bash
+bash ./wtone-bypass-mdm-v2.sh \
+  --system '/Volumes/Your System Volume' \
+  --data '/Volumes/Your Data Volume' \
+  --username NewAdmin
 ```
 
-**Monero (XMR):**
+Replace both example paths and `NewAdmin` with your actual targets and intended new username. In multiline commands, do not put spaces after the trailing backslash.
 
+The output lists the volume paths and device identifiers, volume-group UUID, new username and UID, hosts path, domain profile, and selected domains. A successful preflight ends with:
+
+```text
+READ-ONLY PREFLIGHT COMPLETE. No files, accounts or volumes were changed.
 ```
-45RnFseY4gNZv58DvShz2KJEbx1EyaTtaMCDnU5th21KbRThWurjjK6iugEdq9wfc4Kbw3a7AAyqo6WnEmL1StAMJur8QJp
+
+Preflight does not request a password, create a backup or account, or edit configuration. Passing it does not establish that later writes or account login will succeed.
+
+## 5. Arguments
+
+| Argument | Required | Meaning |
+|---|---|---|
+| `--system PATH` | Yes, except help | Complete mounted offline System-volume path |
+| `--data PATH` | Yes, except help | Complete matching Data-volume path |
+| `--username NAME` | Yes, except help | New account name; no default |
+| `--domains conservative` | No | Default three-domain profile |
+| `--domains xiaohu-six` | No | Optional six-domain profile with additional service risks |
+| `--apply` | No | Enable the write flow; otherwise preflight only |
+| `--help` or `-h` | No | Display help |
+
+Usernames must start with an ASCII letter, be 1–31 characters long, and contain only letters, digits, underscores, or hyphens. Account-name comparison is case-insensitive. Existing home directories and account plists also cause a stop; existing accounts are not reused or reset.
+
+## 6. Domain profiles
+
+The default `conservative` profile retains the original v2 enrollment hosts:
+
+```text
+deviceenrollment.apple.com
+mdmenrollment.apple.com
+iprofiles.apple.com
 ```
 
-## ⚖️ Legal Disclaimer
+The optional `xiaohu-six` profile adds:
 
-> **Important:** Although it's virtually impossible to detect that you've removed MDM (because it was never configured locally), be aware that your device's serial number will still appear in your organization's inventory system. This script prevents MDM from being configured locally, making the device unmanageable remotely.
->
-> **Use responsibly and at your own risk.** This tool is intended for personal devices and should not be used to circumvent legitimate organizational policies without proper authorization.
+```text
+acmdm.apple.com
+albert.apple.com
+deviceservices-external.apple.com
+```
 
----
+| Additional host | Review finding |
+|---|---|
+| `acmdm.apple.com` | Its current necessity was not verified in Apple's official documentation during this review |
+| `albert.apple.com` | Used for device activation; blocking it may affect activation |
+| `deviceservices-external.apple.com` | Used by management services to disable Activation Lock on managed devices; blocking it may affect that flow |
 
-## 📄 License
+See [Apple's enterprise network host documentation](https://support.apple.com/en-euro/101555). Six hosts align with the previously reviewed Xiaohu script; they are not a complete or universally necessary MDM blocklist. The three-host profile is not a guarantee of effectiveness either. Organizations can use their own management servers.
 
-This project is provided as-is for educational purposes. Use at your own discretion.
+To preview the six-host selection, add `--domains xiaohu-six` to the preflight command. Do not add `--apply` when you only intend to inspect it.
+
+The hosts checks match complete hostname fields and ignore comments. Conflicting existing non-loopback mappings cause a stop. Other existing content is preserved. **Switching from six hosts to three does not remove previously added blocks.**
+
+## 7. Apply changes
+
+After reviewing the preflight output and script, add `--apply` to the same command:
+
+```bash
+bash ./wtone-bypass-mdm-v2.sh \
+  --system '/Volumes/Your System Volume' \
+  --data '/Volumes/Your Data Volume' \
+  --username NewAdmin \
+  --domains conservative \
+  --apply
+```
+
+Apply requires root. `id -u` returns `0` for root. The script does not elevate privileges; do not bypass its permissions or live-volume checks by forcing execution against a running installation.
+
+The write flow:
+
+1. Run preflight and display the targets.
+2. Require the exact confirmation text containing the current device identifiers, for example `APPLY disk3s1 disk3s5`. Use the identifiers actually displayed, not those in this example.
+3. Request the new password twice with input hidden.
+4. Recheck volume identity, account conflicts, UID availability, hosts entries, and directory write permissions.
+5. Back up configuration, then create the new administrator and edit local configuration.
+
+Passwords have no default. They must be 16–128 characters, include uppercase and lowercase letters, a digit and a symbol, and pass the script's username-substring check. Complexity rules do not detect every guessable password; use a unique random one. Seeing no characters while typing is expected.
+
+The final message reports that local commands completed without an error. It does not verify MDM removal. The new administrator persists until separately removed and does not automatically receive Secure Token, FileVault unlock access, or Apple silicon volume ownership.
+
+## 8. What changes
+
+Apply creates a new local account, sets its password, creates its home directory, and adds it to the administrator group. On the selected Data volume it updates `private/etc/hosts`, creates the `.AppleSetupDone` marker under `private/var/db`, and removes or creates the original v2 configuration markers under `ConfigurationProfiles/Settings`.
+
+Mutable paths are resolved directly on Data, avoiding absolute symlinks through an offline System mount. Configuration backups are also written to Data. Local hosts and marker edits do not release a device from an organization's management platform.
+
+## 9. Backups and recovery
+
+Before creating the account, the script creates a private backup directory under the selected Data volume:
+
+```text
+/Volumes/Actual Data Volume/private/var/db/mdm-reviewed-backup.XXXXXX/
+```
+
+Use the actual path printed by the script; `XXXXXX` is a generated suffix. Directory permissions are `700`. Configuration data may be sensitive.
+
+| Backup item | Contents |
+|---|---|
+| `hosts.before` | Previous hosts file |
+| `Settings.before/` | Previous configuration Settings directory |
+| `AppleSetupDone.before` | Copy of the setup marker if it existed |
+| `AppleSetupDone.was-absent` | Records that the marker did not exist; used instead of the preceding item |
+| `manifest.txt` | Target paths, volume-group UUID, intended new username and UID; no password |
+
+Backups are not a transaction or a full account-database backup. The manifest records planned identifiers, not proof that every step succeeded.
+
+If recovery is needed, stop, verify the backup's target group, compare current files with the backup, and restore only the changes you intend to undo. Avoid replacing the whole Settings directory if other changes occurred later. Treat an originally absent setup marker differently from an originally present one.
+
+Inspect the new account and home separately. Do not delete accounts based only on a name or UID. Restoring hosts does not undo all operations. There is no automatic rollback.
+
+## 10. Troubleshooting
+
+| Message or symptom | Check |
+|---|---|
+| `Run only on macOS` | Real operation requires macOS, not Windows |
+| `Volume is not mounted` | Actual path, mount state, unlock state and accessibility |
+| `Paths are not the exact reported mount points` | Use the actual volume mount point, not a subdirectory or old path |
+| `APFS volume-group UUID unavailable` | Required metadata is unavailable; do not infer grouping from names or containers |
+| `do NOT belong to the same APFS volume group` | Select the matching System/Data pair |
+| `do not have System and Data roles` | Check reversed arguments, snapshots, or unrelated volume roles |
+| `currently booted macOS volume group` | Operate on the offline target from Recovery |
+| Existing username, home directory or plist | Choose an unused name; do not remove existing records to bypass the check |
+| Account database cannot be read or has unexpected output | Access, unlock state, or database layout needs investigation |
+| UID became occupied | Stop and investigate concurrent account changes |
+| Conflicting hosts mapping | Review the existing mapping's purpose |
+| Missing required directory | The installation layout differs; do not create substitute directories to pass checks |
+| Target not writable | Review permissions and volume state; do not disable system protections just to proceed |
+| Password input appears blank | Hidden input is expected; complete both entries |
+| Username conflict after an interrupted run | Inspect partial changes and the backup before retrying |
+
+An error or `Ctrl+C` after writing starts does not undo earlier operations. Record the output and backup path before deciding what to change next.
+
+## 11. Validation and limitations
+
+The derivative passed a Bash syntax check and 22 mocked checks in Windows Git Bash. These covered password handling, account conflicts, UID exhaustion and rechecks, hosts matching, volume-group and role validation, live-group protection, and the default no-write flow.
+
+Those checks did not run real macOS `diskutil` or `dscl`, test macOS Bash 3.2 or a specific M3 Pro Recovery environment, verify login, or verify management-state changes.
+
+- Password entry is hidden, but the inherited `dscl -passwd` argument interface can briefly expose the password in process arguments. Do not enable shell tracing or debugging.
+- Checks and writes are not atomic; concurrent account or mount changes remain a risk.
+- Interrupted runs can leave partial changes; neither account deletion nor configuration rollback is automatic.
+- The six-host profile can disrupt activation-related services, and hosts edits do not cover every management communication path.
+- Passing preflight or applying local edits does not establish organization-side release. An authorized organization administrator must handle formal release; see [Apple's device-release guide](https://support.apple.com/en-gb/guide/business/axmec4d28461/web).
+
+## 12. Legacy documentation and license
+
+The original README, including its original instructions and contribution information, is preserved in [docs/README-legacy.md](docs/README-legacy.md). Those instructions describe the unchanged legacy scripts, not the derivative documented above.
+
+This repository is licensed under the [MIT License](LICENSE), retaining the original copyright notice for assafdori.
