@@ -4,6 +4,8 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import sys
+import plistlib
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / 'bypass-mdm-v3.sh'
@@ -40,6 +42,10 @@ class SafetyTests(unittest.TestCase):
         (cls.fixture / 'Data').mkdir()
         (cls.fixture / 'homes').mkdir()
         (cls.fixture / 'users').mkdir()
+        (cls.fixture / 'apfs.plist').write_bytes(plistlib.dumps({'Containers': [{'ContainerReference': 'disk3', 'Volumes': [
+            {'DeviceIdentifier': 'disk3s1', 'Roles': ['System']},
+            {'DeviceIdentifier': 'disk3s5', 'Roles': ['Data']},
+        ]}]}))
 
     @classmethod
     def tearDownClass(cls):
@@ -153,6 +159,80 @@ EOF
 
     def test_invalid_database_output_stops(self):
         self.stops('dscl() { printf "unexpected output\\n"; }; dscl_path=unused; read_users')
+
+    def test_mac_system_accounts_with_negative_uid_are_valid(self):
+        result = self.ok('''
+dscl() { printf 'nobody -2\nroot 0\ndaemon 1\n_mbsetupuser 248\nExistingUser 501\n'; }
+dscl_path=unused
+read_users
+find_available_uid
+''')
+        self.assertEqual(result.stdout.strip(), '502')
+
+    def test_missing_root_and_malformed_uid_still_stop(self):
+        self.stops("dscl() { printf 'nobody -2\\nAlice 501\\n'; }; dscl_path=unused; read_users")
+        self.stops("dscl() { printf 'root 0\\nAlice not-a-uid\\n'; }; dscl_path=unused; read_users")
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'Requires native macOS plutil')
+    def test_native_plutil_expected_missing_keys_are_silent_with_traps(self):
+        result = self.ok('''
+install_traps
+xml=$(cat "$FIXTURES/apfs.plist")
+[ "$(role_for_device "$xml" disk3s1)" = System ]
+[ "$(role_for_device "$xml" disk3s5)" = Data ]
+if role_for_device "$xml" disk9s1; then exit 9; fi
+if value=$(plist_value "$xml" APFSVolumeGroupID); then exit 9; fi
+''')
+        self.assertEqual(result.stderr, '')
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'Requires native macOS dscl')
+    def test_native_mac_account_inventory_is_accepted(self):
+        self.ok('''
+install_traps
+# Read-only: use the runner's real system-account inventory, never mutate it.
+dscl() { command dscl . -list /Users UniqueID; }
+dscl_path=unused
+read_users
+''')
+
+    def test_expected_failed_lookups_with_traps_remain_silent(self):
+        result = self.ok('''
+install_traps
+plutil() { cat >/dev/null; return 1; }
+for key in Missing.0 Missing.1 Missing.2; do
+  if value=$(plist_value '<plist/>' "$key"); then exit 9; fi
+done
+''')
+        self.assertEqual(result.stdout, '')
+        self.assertEqual(result.stderr, '')
+
+    def test_real_failure_reports_once_and_preserves_exit_status(self):
+        result = self.stops('install_traps; passw=DO_NOT_PRINT_PASSWORD; value=$(exit 7); printf SHOULD_NOT_CONTINUE')
+        self.assertEqual(result.returncode, 7)
+        self.assertEqual(result.stderr.count('Preflight stopped'), 1)
+        self.assertIn('No target files or accounts were changed', result.stderr)
+        self.assertNotIn('DO_NOT_PRINT_PASSWORD', result.stdout + result.stderr)
+        self.assertNotIn('SHOULD_NOT_CONTINUE', result.stdout)
+
+    def test_apply_failure_has_one_partial_change_notice(self):
+        result = self.stops('install_traps; changes_started=1; false')
+        self.assertEqual(result.stderr.count('Apply stopped'), 1)
+        self.assertNotIn('No target files', result.stderr)
+
+    def test_retriable_username_conflict_has_no_fatal_exit_notice(self):
+        result = self.ok('''
+install_traps
+require_terminal() { :; }
+homes_dir="$FIXTURES/homes"; users_dir="$FIXTURES/users"
+user_inventory=$'nobody -2\nroot 0\napple 501'
+prompt_username <<'EOF'
+
+FreshUser
+EOF
+[ "$username" = FreshUser ]
+''')
+        self.assertNotIn('Preflight stopped', result.stderr)
+        self.assertNotIn('Apply stopped', result.stderr)
 
     def test_existing_home_stops(self):
         self.stops('username=StaleHome; user_inventory="root 0"; homes_dir="$FIXTURES/homes"; users_dir="$FIXTURES/users"; mkdir "$homes_dir/StaleHome"; assert_new_account')

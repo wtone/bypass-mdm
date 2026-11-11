@@ -1,0 +1,31 @@
+name: macOS shell checks
+
+on:
+  push:
+    paths:
+      - 'bypass-mdm-v3.sh'
+      - 'tests/**'
+      - '.github/workflows/macos-shell.yml'
+  pull_request:
+    paths:
+      - 'bypass-mdm-v3.sh'
+      - 'tests/**'
+      - '.github/workflows/macos-shell.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recovery-bash:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check with macOS Bash and native read-only utilities
+        env:
+          MDM_TEST_BASH: /bin/bash
+        run: |
+          /bin/bash --version
+          /bin/bash -n bypass-mdm-v3.sh
+          python3 -B -m unittest discover -s tests -v

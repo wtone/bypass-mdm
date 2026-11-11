@@ -8,12 +8,13 @@
 # No arguments: interactive selection and action menu (default: preflight).
 # Parameter mode remains read-only unless --apply or an interactive apply choice is used.
 set +x
-set -Eeuo pipefail
+set -euo pipefail
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
 export LC_ALL=C
 umask 077
 
 language=zh
+changes_started=0
 
 # Fixed format strings only; pass variable text as separate arguments.
 message() {
@@ -80,7 +81,8 @@ message() {
             'Unexpected marker type: %s') format='标记文件类型异常：%s' ;;
             'Unexpected .AppleSetupDone type.') format='.AppleSetupDone 文件类型异常。' ;;
             'Cannot read account database; no assumption of an unused name or UID.') format='无法读取账户数据库；不会假定用户名或 UID 可用。' ;;
-            'Unexpected account inventory or missing root record.') format='账户列表格式异常，或缺少 root 记录。' ;;
+            'Unexpected account inventory format or non-numeric UID.') format='账户列表格式异常，或 UID 不是整数；已停止。' ;;
+            'Account inventory has no root record with UID 0.') format='账户列表中没有 UID 为 0 的 root 记录；已停止，不会假定账户数据库为空。' ;;
             'Username already exists (case-insensitive check). Existing accounts will not be reused or reset.') format='用户名已存在（不区分大小写）。不会复用或重置已有账户。' ;;
             'A home directory or account plist already uses this name.') format='已有用户目录或账户 plist 文件使用了该名称。' ;;
             'Selected UID is now occupied. Stop; do not fall back to 501.') format='所选 UID 已被占用；已停止，不会退回使用 501。' ;;
@@ -116,7 +118,8 @@ message() {
             'This creates a persistent administrator and edits offline system state. It does not grant Secure Token or volume ownership.') format='本操作会创建持久管理员账户并修改离线系统状态，不会授予 Secure Token 或卷所有权。' ;;
             'Target directory is not writable: %s') format='目标目录不可写：%s' ;;
             'Selected hosts file is not writable.') format='所选 hosts 文件不可写。' ;;
-            'Stopped at line %s. Partial changes may remain if applying; no automatic rollback was attempted.') format='已在第 %s 行停止。执行修改时可能留下部分修改，未进行自动回滚。' ;;
+            'Preflight stopped (exit status %s). No target files or accounts were changed.') format='检查阶段已停止（退出码 %s），未修改目标文件或账户。' ;;
+            'Apply stopped (exit status %s). Partial changes may remain; no automatic rollback was attempted.') format='执行阶段已停止（退出码 %s），可能保留部分修改，未进行自动回滚。' ;;
             'Unknown language: %s. Use zh or en.') format='未知语言：%s。请使用 zh 或 en。' ;;
         esac
     fi
@@ -125,6 +128,26 @@ message() {
 
 fail() { printf '%s: %s\n' "$(message 'ERROR')" "$(message "$@")" >&2; exit 1; }
 info() { printf '%s\n' "$(message "$@")"; }
+
+# EXIT is not an error hook for every unsuccessful lookup. Bash 3.2 can invoke
+# inherited ERR traps inside command substitutions used by conditional probes.
+# Report once, from the main shell, and only when the script actually exits.
+report_exit() {
+    local status="$1"
+    unset passw
+    [ "$status" -ne 0 ] || return 0
+    [ "$BASH_SUBSHELL" -eq 0 ] || return 0
+    if [ "$changes_started" -eq 1 ]; then
+        info 'Apply stopped (exit status %s). Partial changes may remain; no automatic rollback was attempted.' "$status" >&2
+    else
+        info 'Preflight stopped (exit status %s). No target files or accounts were changed.' "$status" >&2
+    fi
+}
+
+install_traps() {
+    trap 'report_exit "$?"' EXIT
+    trap 'unset passw; exit 130' INT TERM
+}
 
 usage() {
     if [ "$language" = zh ]; then
@@ -404,7 +427,10 @@ validate_username() {
 
 read_users() {
     user_inventory=$(dscl -f "$dscl_path" localhost -list /Local/Default/Users UniqueID) || fail 'Cannot read account database; no assumption of an unused name or UID.'
-    printf '%s\n' "$user_inventory" | awk 'NF != 2 || $2 !~ /^[0-9]+$/ {bad=1} $1=="root" && $2==0 {root=1} END {exit (bad || !root)}' || fail 'Unexpected account inventory or missing root record.'
+    # macOS system accounts can have signed UIDs (notably nobody = -2).
+    # Keep every record for collision checks; do not filter malformed rows out.
+    printf '%s\n' "$user_inventory" | awk 'NF != 2 || $2 !~ /^-?[0-9]+$/ {bad=1} END {exit bad}' || fail 'Unexpected account inventory format or non-numeric UID.'
+    printf '%s\n' "$user_inventory" | awk '$1=="root" && $2==0 {root=1} END {exit !root}' || fail 'Account inventory has no root record with UID 0.'
 }
 
 assert_new_account() {
@@ -495,6 +521,7 @@ make_backup() {
 
 apply_changes() {
     local user_record="/Local/Default/Users/$username"
+    changes_started=1
     make_backup
     info 'Creating a NEW administrator. If interrupted, partial changes may remain; inspect the backup manifest before retrying.'
     dscl -f "$dscl_path" localhost -create "$user_record"
@@ -614,7 +641,6 @@ main() {
 }
 
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
-    trap 'unset passw; info "Stopped at line %s. Partial changes may remain if applying; no automatic rollback was attempted." "$LINENO" >&2' ERR
-    trap 'unset passw; exit 130' INT TERM
+    install_traps
     main "$@"
 fi

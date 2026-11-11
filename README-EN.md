@@ -140,6 +140,7 @@ You can still specify all targets with `--system`, `--data`, and `--username`. P
 | Group, role, or device mismatch | Recheck the System/Data pair; do not remove validation to force execution |
 | Currently booted target rejected | Return to Recovery and operate on the offline installation |
 | Username, UID, or home conflict | Use an unused name; after an interrupted run, inspect any partially created account first |
+| Repeated “Stopped at line …” notices or account-inventory validation failure | Download the current script instead of reusing an old copy. If the China address still serves old content, synchronize the CDN file and refresh its cache. Record any remaining error; do not bypass account validation |
 | Insufficient permission or unwritable target | Check `id -u`: apply requires `0`; also review unlock state and volume status |
 | Password typing looks blank | Expected: Return selects `1234`, then Return confirms it; alternatively enter and confirm a custom password |
 | Retrying after interruption or failure | Record the error and backup path, then inspect the state before retrying with another name |
