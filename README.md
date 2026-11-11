@@ -41,13 +41,25 @@ ls /Volumes
 
 ## 4. 一行下载并执行
 
-在恢复模式终端粘贴以下整行命令，无需手动填写卷路径或用户名：
+提供国内下载地址，方便国内网络无法访问 GitHub 或 `raw.githubusercontent.com` 时使用。以下两种方式任选一种，在恢复模式终端粘贴对应整行命令，无需手动填写卷路径或用户名。
+
+### 方式一：【推荐】国内地址
+
+下载地址：[国内 CDN 脚本](https://cdn.h5ds.com/bypass-mdm/bypass-mdm-v3.sh)。
+
+```bash
+cd /tmp && curl -fsSL https://cdn.h5ds.com/bypass-mdm/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
+```
+
+### 方式二：GitHub 地址
+
+网络可以访问 GitHub 下载服务时，也可直接使用项目源文件：
 
 ```bash
 cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
 ```
 
-启动时先选择语言：直接回车或输入 `1` 使用中文（默认），输入 `2` 使用英文，输入 `q` 取消。随后依次选择系统卷、数据卷和输入新用户名，再显示操作菜单：
+两种地址下载后使用相同的交互流程。启动时先选择语言：直接回车或输入 `1` 使用中文（默认），输入 `2` 使用英文，输入 `q` 取消。随后依次选择系统卷、数据卷和输入新用户名，再显示操作菜单：
 
 - 输入 `1` 或直接回车：仅检查，不修改账户或配置。
 - 输入 `2`：进入执行流程，确认目标设备编号并设置密码；这些提示也支持回车接受默认值。
@@ -121,7 +133,7 @@ bash /tmp/bypass-mdm-v3.sh --lang en
 
 | 问题 | 处理方法 |
 |---|---|
-| 下载失败 | 检查恢复环境中的网络，以及能否连接 `raw.githubusercontent.com`；下载失败时后续步骤不会执行 |
+| 下载失败 | 检查恢复环境中的网络，以及能否连接所选地址的 `cdn.h5ds.com` 或 `raw.githubusercontent.com`；可换用另一种下载地址。下载失败时后续步骤不会执行 |
 | 没有可选卷、卷未挂载或路径不符 | 用磁盘工具挂载/解锁，再用 `ls /Volumes` 查看实际路径 |
 | 卷组、角色或设备编号不匹配 | 重新核对目标 System/Data 组合，不要删除校验来强行继续 |
 | 提示当前启动卷不能修改 | 返回恢复模式，操作离线目标安装 |

@@ -41,13 +41,25 @@ The script lists mounted offline volumes. The first eligible System candidate is
 
 ## 4. Download and run in one line
 
-Paste this complete line into Terminal in Recovery. No volume-path or username arguments need to be edited:
+A mainland China download address is available for networks that cannot reach GitHub or `raw.githubusercontent.com`. Choose either method below and paste its complete command into Terminal in Recovery. No volume-path or username arguments need to be edited.
+
+### Method 1: [Recommended] Mainland China address
+
+Download: [Mainland China CDN script](https://cdn.h5ds.com/bypass-mdm/bypass-mdm-v3.sh).
+
+```bash
+cd /tmp && curl -fsSL https://cdn.h5ds.com/bypass-mdm/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
+```
+
+### Method 2: GitHub address
+
+If your network can access GitHub downloads, use the project source directly:
 
 ```bash
 cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
 ```
 
-At startup, choose a language: Return or `1` selects Chinese (the default), `2` selects English, and `q` cancels. Then choose the System and Data volumes and enter a new username. The action menu offers:
+Both download methods use the same interactive flow. At startup, choose a language: Return or `1` selects Chinese (the default), `2` selects English, and `q` cancels. Then choose the System and Data volumes and enter a new username. The action menu offers:
 
 - `1` or Return: check only; no account or configuration changes.
 - `2`: enter the apply flow, including device-ID confirmation and password setup; these prompts also accept defaults with Return.
@@ -121,7 +133,7 @@ You can still specify all targets with `--system`, `--data`, and `--username`. P
 
 | Problem | Action |
 |---|---|
-| Download fails | Check Recovery networking and access to `raw.githubusercontent.com`; later steps do not run if download fails |
+| Download fails | Check Recovery networking and access to the chosen host, `cdn.h5ds.com` or `raw.githubusercontent.com`; try the other download address. Later steps do not run if download fails |
 | No available candidate, unmounted volume, or incorrect path | Mount/unlock in Disk Utility, then check actual paths with `ls /Volumes` |
 | Group, role, or device mismatch | Recheck the System/Data pair; do not remove validation to force execution |
 | Currently booted target rejected | Return to Recovery and operate on the offline installation |
