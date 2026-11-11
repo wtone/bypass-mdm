@@ -37,7 +37,7 @@ ls /Volumes
 
 Identify the **System volume** and matching **Data volume** in the same APFS volume group. Both must be mounted. Use Disk Utility to mount or unlock them first if needed.
 
-The script lists mounted offline volumes. Select a System volume by number, then a Data volume in the same APFS volume group. Even a single candidate requires an explicit selection; verify the intended target rather than relying on its name.
+The script lists mounted offline volumes. The first eligible System candidate is the default, followed by the first eligible Data candidate in the same APFS volume group. Each step displays the default path and device ID. Press Return to accept, or enter another number or a full mount path from the list. No eligible candidate means the script stops. Verify the target rather than relying on its name.
 
 ## 4. Download and run in one line
 
@@ -50,10 +50,23 @@ cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/by
 At startup, choose a language: Return or `1` selects Chinese (the default), `2` selects English, and `q` cancels. Then choose the System and Data volumes and enter a new username. The action menu offers:
 
 - `1` or Return: check only; no account or configuration changes.
-- `2`: enter the apply flow, including exact device-ID confirmation and a strong password entered twice.
+- `2`: enter the apply flow, including device-ID confirmation and password setup; these prompts also accept defaults with Return.
 - `q`: cancel; volume selection also accepts `q`.
 
 Append `--check` to force check-only mode. Append `--apply` to skip the action menu and enter the apply flow; volume selection, username entry, disk confirmation, and password prompts still remain.
+
+| Prompt | Value used on Return | Custom input |
+|---|---|---|
+| Language | Chinese | Enter `2` for English |
+| System volume | First eligible listed volume | Enter another number or a full mount path from the list |
+| Data volume | First eligible volume in the System group | Enter another number or a full mount path from the list |
+| Username | `apple` | Enter an unused new username |
+| Action | Check only | Enter `2` to apply |
+| Disk confirmation | Displayed `APPLY SystemDeviceID DataDeviceID` | Review and press Return, or type the exact confirmation; Ctrl+C cancels |
+| Password | `1234` | Enter any custom password |
+| Repeat password | Password chosen in the previous step | Enter the same password again |
+
+Pressing Return throughout completes a read-only check. Disk confirmation and password setup appear only after `--apply` or action `2`. A default volume is simply the first eligible candidate; review it before accepting.
 
 If already downloaded, run it separately:
 
@@ -74,17 +87,17 @@ Files in `/tmp` may disappear after a restart. Download again if needed.
 
 ## 5. Complete the prompts
 
-1. Choose a language (Chinese by default), then select a System volume by number and a matching Data volume. If no candidate is available, mount or unlock the volumes in Disk Utility and rerun.
-2. Enter an unused username. Correct invalid or conflicting names when prompted.
+1. Choose a language (Chinese by default), then review the System and matching Data volumes. Return accepts each displayed default; another number or a listed path selects a different candidate. If none is available, mount or unlock the volumes in Disk Utility and rerun.
+2. Press Return for username `apple`, or enter an unused name. Correct invalid or conflicting names when prompted; existing accounts are never reused or reset.
 3. Review the displayed paths, device identifiers, and username. Choose `2` to apply or `1` to check only.
-4. Enter the exact requested confirmation, such as `APPLY disk3s1 disk3s5`. Use the identifiers displayed during this run. Both languages require uppercase `APPLY` and the exact device identifiers.
-5. Enter the password twice. Input is hidden and there is no default password.
+4. Review the two device IDs in the disk confirmation, then press Return to accept. You may instead type the exact text, such as `APPLY disk3s1 disk3s5`, using the identifiers displayed in this run. A mismatch stops execution; Ctrl+C cancels.
+5. Press Return for password `1234`, or enter any custom password. At the repeat prompt, Return confirms the password chosen in the previous step, or you can type the same password again. A mismatch requires retrying. Input remains hidden.
 6. Wait for completion. Investigate any error instead of treating it as success.
 7. Quit Terminal, restart using the Apple menu, and try signing in with the new credentials.
 
 Username: 1–31 characters, starting with an ASCII letter, using only letters, digits, `_`, or `-`. It must not conflict with an existing account or home directory.
 
-Password: 16–128 characters, including uppercase and lowercase letters, a digit, and a symbol. Avoid including the username. Save it securely; it is not displayed at completion.
+Password: defaults to `1234`. There are no strength checks for length, character classes, or inclusion of the username; any custom password is accepted by the script. Empty input selects the default rather than an empty password. Save custom passwords securely; their contents are not displayed. `1234` is weak: change it after signing in. If the macOS password-setting command rejects a password, the script reports an error and stops.
 
 ## 6. Optional arguments
 
@@ -93,7 +106,7 @@ Password: 16–128 characters, including uppercase and lowercase letters, a digi
 | `--lang zh` / `--lang en` | Choose Chinese or English directly and skip startup language selection; Chinese is the default |
 | `--system 'path'` | Optional; omit to choose a System volume interactively |
 | `--data 'path'` | Optional; omit to choose a matching Data volume |
-| `--username name` | Optional; omit to enter a new username interactively |
+| `--username name` | Optional; omit for a prompt with default `apple`; account-conflict checks still apply |
 | `--check` | Force check-only mode; cannot be combined with `--apply` |
 | `--apply` | Enter the apply flow; disk confirmation and password input remain required |
 | `--domains conservative` | Default three-host selection; normally leave the default |
@@ -114,7 +127,7 @@ You can still specify all targets with `--system`, `--data`, and `--username`. P
 | Currently booted target rejected | Return to Recovery and operate on the offline installation |
 | Username, UID, or home conflict | Use an unused name; after an interrupted run, inspect any partially created account first |
 | Insufficient permission or unwritable target | Check `id -u`: apply requires `0`; also review unlock state and volume status |
-| Password typing looks blank | Expected: finish typing, press Return, and confirm it |
+| Password typing looks blank | Expected: Return selects `1234`, then Return confirms it; alternatively enter and confirm a custom password |
 | Retrying after interruption or failure | Record the error and backup path, then inspect the state before retrying with another name |
 
 The script prints its configuration-backup location under the target Data volume's `private/var/db/mdm-reviewed-backup.XXXXXX/`. This is not a full backup and there is no automatic rollback; a failure can leave partial changes.

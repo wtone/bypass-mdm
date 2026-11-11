@@ -36,11 +36,12 @@ message() {
             'No mounted offline %s volume is available. Mount/unlock the correct volumes in Disk Utility, then rerun.') format='没有可用的已挂载离线 %s 卷。请先在磁盘工具中挂载或解锁正确的卷，再重新运行。' ;;
             '\nSelect %s volume (q to cancel):\n') format='\n请选择 %s 卷（输入 q 取消）：\n' ;;
             '  %s) %s [%s; group %s]\n') format='  %s) %s [%s；卷组 %s]\n' ;;
-            'Volume number: ') format='卷编号：' ;;
+            'Volume number or listed mount path [1]: ') format='卷编号或列表中的挂载路径 [1]：' ;;
+            'Default volume: 1) %s [%s]\n') format='默认卷：1) %s [%s]\n' ;;
             'Volume selection interrupted.') format='卷选择已中断。' ;;
             'Cancelled. No changes made.') format='已取消，未进行任何修改。' ;;
-            'Enter a displayed volume number, or q to cancel. There is no default selection.') format='请输入列表中的卷编号，或输入 q 取消。没有默认选项。' ;;
-            'New username (no default; Ctrl+C to cancel): ') format='请输入新用户名（无默认值；Ctrl+C 取消）：' ;;
+            'Enter a listed number or mount path, Return for 1, or q to cancel.') format='请输入列表中的编号或挂载路径，回车选 1，或输入 q 取消。' ;;
+            'New username [apple] (Ctrl+C to cancel): ') format='请输入新用户名 [apple]（Ctrl+C 取消）：' ;;
             'Username input interrupted.') format='用户名输入已中断。' ;;
             'Use 1-31 ASCII letters/digits/_/-, beginning with a letter.') format='请使用 1–31 个英文字母、数字、_ 或 -，且以英文字母开头。' ;;
             'Choose another NEW username; no existing account will be reused.') format='请换一个全新用户名；不会复用已有账户。' ;;
@@ -48,7 +49,7 @@ message() {
             'Action [1]: ') format='请选择操作 [1]：' ;;
             'Action selection interrupted.') format='操作选择已中断。' ;;
             'Enter 1, 2, or q.') format='请输入 1、2 或 q。' ;;
-            'Type APPLY %s %s to confirm these exact target volumes: ') format='请输入 APPLY %s %s，确认以上两个目标卷：' ;;
+            'Confirm target volumes [APPLY %s %s] (Return accepts; Ctrl+C cancels): ') format='确认目标卷 [APPLY %s %s]（回车接受；Ctrl+C 取消）：' ;;
             'Target confirmation interrupted. No changes made.') format='磁盘确认已中断，未进行任何修改。' ;;
             'Target confirmation did not match. No changes made.') format='磁盘确认文字不匹配，未进行任何修改。' ;;
             'Cannot inspect System volume.') format='无法读取 System 系统卷的信息。' ;;
@@ -83,10 +84,10 @@ message() {
             'Username already exists (case-insensitive check). Existing accounts will not be reused or reset.') format='用户名已存在（不区分大小写）。不会复用或重置已有账户。' ;;
             'A home directory or account plist already uses this name.') format='已有用户目录或账户 plist 文件使用了该名称。' ;;
             'Selected UID is now occupied. Stop; do not fall back to 501.') format='所选 UID 已被占用；已停止，不会退回使用 501。' ;;
-            'New password (16-128 chars; upper/lower/digit/symbol; no default): ') format='请输入新密码（16–128 个字符；含大小写字母、数字及符号；无默认值）：' ;;
+            'New password [1234] (Return uses default; input hidden): ') format='请输入新密码 [1234]（回车使用默认值；输入隐藏）：' ;;
             'Password input interrupted.') format='密码输入已中断。' ;;
-            'Password does not meet the policy. Use a unique password from a password manager.') format='密码不符合要求。请使用密码管理器生成独立的强密码，且不要包含用户名。' ;;
-            'Repeat password: ') format='请再次输入密码：' ;;
+            'Repeat password (Return accepts the chosen password; input hidden): ') format='请再次输入密码（回车确认所选密码；输入隐藏）：' ;;
+            'WARNING: the default password 1234 is weak. Change it after signing in.') format='提示：默认密码 1234 很弱，请在登录后修改。' ;;
             'Password confirmation interrupted.') format='密码确认已中断。' ;;
             'Passwords did not match.') format='两次密码不一致，请重新输入。' ;;
             'Unknown domain profile.') format='未知域名选项。' ;;
@@ -138,10 +139,13 @@ usage() {
 默认中文。交互启动时回车选中文，输入 2 选英文。
 --lang zh|en：直接指定中文或英文，跳过语言选择。
 省略卷或用户名时，交互选择已挂载的离线卷并输入全新用户名。
+回车选择列表中的第一个卷；数据卷仅列出同组候选项。也可输入其他编号或列表中的挂载路径。
+用户名默认 apple；密码默认 1234，允许任意自定义密码，不校验强度。
+密码确认时回车接受所选密码；磁盘确认时回车接受当前显示的目标设备编号。
 操作菜单提供仅检查（默认）、执行修改或取消。
 --check：固定仅检查；--apply：进入执行流程，两者不能同时使用。
 完整提供目标参数且未指定 --apply 时，仅进行检查。
-执行修改需要 root 权限、目标设备编号确认、强密码及写入前复查。
+执行修改需要 root 权限、目标设备编号确认、密码确认及写入前复查。
 脚本备份相关文件，创建一个全新管理员，再修改 hosts 和设置标记。
 不会重命名、挂载或解锁卷，不会修改安全策略或自动重启。
 
@@ -160,10 +164,14 @@ Usage (macOS Recovery, mounted/unlocked offline System and Data volumes):
 Chinese is the default. At interactive startup, Return selects Chinese; 2 selects English.
 --lang zh|en: set the language directly and skip language selection.
 Missing volumes or username: choose mounted offline volumes and enter a new username.
+Return selects the first listed volume; Data candidates must match the System group.
+You may enter another number or a listed mount path. Username defaults to apple.
+Password defaults to 1234; any custom password is accepted without strength checks.
+Return at password confirmation accepts the chosen password; at disk confirmation it accepts the displayed target IDs.
 Interactive mode then offers check only (default), apply, or cancel.
 --check: preflight only, even in interactive mode. --apply: enter the apply flow.
 With all target arguments and neither action flag: preflight only, as before.
-Apply requires root, rechecks, confirmation of target IDs, and a strong password.
+Apply requires root, rechecks, confirmation of target IDs, and password confirmation.
 Apply backs up affected files, creates ONE NEW administrator, and then applies
 the upstream hosts/setup-marker changes.
 No volume rename, mounting, unlocking, security-policy changes or automatic reboot.
@@ -276,24 +284,27 @@ choose_volume() {
     for ((index=0; index<candidate_count; index++)); do
         message '  %s) %s [%s; group %s]\n' "$((index + 1))" "${candidate_paths[$index]}" "${candidate_devices[$index]}" "${candidate_groups[$index]}"
     done
+    message 'Default volume: 1) %s [%s]\n' "${candidate_paths[0]}" "${candidate_devices[0]}"
     while true; do
-        IFS= read -r -p "$(message 'Volume number: ')" choice || fail 'Volume selection interrupted.'
+        IFS= read -r -p "$(message 'Volume number or listed mount path [1]: ')" choice || fail 'Volume selection interrupted.'
+        choice=${choice:-1}
         case "$choice" in q|Q) fail 'Cancelled. No changes made.' ;; esac
         # Compare strings to the numbered choices; never evaluate untrusted arithmetic.
         for ((index=0; index<candidate_count; index++)); do
-            if [ "$choice" = "$((index + 1))" ]; then
+            if [ "$choice" = "$((index + 1))" ] || [ "$choice" = "${candidate_paths[$index]}" ]; then
                 selected_volume_path="${candidate_paths[$index]}"
                 return 0
             fi
         done
-        info 'Enter a displayed volume number, or q to cancel. There is no default selection.'
+        info 'Enter a listed number or mount path, Return for 1, or q to cancel.'
     done
 }
 
 prompt_username() {
     require_terminal
     while true; do
-        IFS= read -r -p "$(message 'New username (no default; Ctrl+C to cancel): ')" username || fail 'Username input interrupted.'
+        IFS= read -r -p "$(message 'New username [apple] (Ctrl+C to cancel): ')" username || fail 'Username input interrupted.'
+        username=${username:-apple}
         if ! validate_username "$username"; then
             info 'Use 1-31 ASCII letters/digits/_/-, beginning with a letter.'
             continue
@@ -325,7 +336,8 @@ choose_action() {
 confirm_targets() {
     local answer
     require_terminal
-    IFS= read -r -p "$(message 'Type APPLY %s %s to confirm these exact target volumes: ' "$expected_system" "$expected_data")" answer || fail 'Target confirmation interrupted. No changes made.'
+    IFS= read -r -p "$(message 'Confirm target volumes [APPLY %s %s] (Return accepts; Ctrl+C cancels): ' "$expected_system" "$expected_data")" answer || fail 'Target confirmation interrupted. No changes made.'
+    answer=${answer:-"APPLY $expected_system $expected_data"}
     [ "$answer" = "APPLY $expected_system $expected_data" ] || fail 'Target confirmation did not match. No changes made.'
 }
 
@@ -420,25 +432,18 @@ assert_uid_free() {
     fi
 }
 
-validate_password() {
-    local value="$1"
-    [ "${#value}" -ge 16 ] && [ "${#value}" -le 128 ] || return 1
-    [[ "$value" =~ [A-Z] ]] && [[ "$value" =~ [a-z] ]] && [[ "$value" =~ [0-9] ]] && [[ "$value" =~ [^a-zA-Z0-9] ]] || return 1
-    [[ "$value" != *"$username"* ]] || return 1
-}
-
 get_password() {
     local confirm=''
     while true; do
-        IFS= read -r -s -p "$(message 'New password (16-128 chars; upper/lower/digit/symbol; no default): ')" passw || fail 'Password input interrupted.'
+        IFS= read -r -s -p "$(message 'New password [1234] (Return uses default; input hidden): ')" passw || fail 'Password input interrupted.'
         printf '\n'
-        if ! validate_password "$passw"; then
-            info 'Password does not meet the policy. Use a unique password from a password manager.'
-            unset passw
-            continue
+        passw=${passw:-1234}
+        if [ "$passw" = 1234 ]; then
+            info 'WARNING: the default password 1234 is weak. Change it after signing in.'
         fi
-        IFS= read -r -s -p "$(message 'Repeat password: ')" confirm || fail 'Password confirmation interrupted.'
+        IFS= read -r -s -p "$(message 'Repeat password (Return accepts the chosen password; input hidden): ')" confirm || fail 'Password confirmation interrupted.'
         printf '\n'
+        confirm=${confirm:-"$passw"}
         [ "$passw" = "$confirm" ] && break
         info 'Passwords did not match.'
         unset passw

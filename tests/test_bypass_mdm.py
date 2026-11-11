@@ -95,30 +95,36 @@ class SafetyTests(unittest.TestCase):
                 result = self.ok('language=' + language + "; info 'Volume is not mounted: %s' '/Volumes/100% \\n literal'")
                 self.assertIn('/Volumes/100% \\n literal', result.stdout)
 
-    def test_password_rejects_default_and_short(self):
-        self.ok('username=NewAdmin; ! validate_password 1234; ! validate_password "Short1!"')
+    def test_any_custom_password_without_strength_checks(self):
+        import shlex
+        for language in ('zh', 'en'):
+            for value in ('x', '1234', 'apple', 'alllowercase', 'UPPERCASE', '含空格 密码', '  a \\ %  ', 'a' * 129):
+                with self.subTest(language=language, value=value):
+                    self.ok('language=' + language + '; username=apple; get_password <<\'EOF\'\n' + value + '\n' + value + '\nEOF\n[ "$passw" = ' + shlex.quote(value) + ' ]; unset passw')
 
-    def test_password_requires_all_character_classes(self):
-        self.ok('username=NewAdmin; ! validate_password "alllowercase123456!"; ! validate_password "UPPERCASEONLY12345!"; ! validate_password "MixedCaseWithoutDigits!"; ! validate_password "MixedCaseWithoutSymbols123"')
+    def test_default_password_and_return_confirmation_in_both_languages(self):
+        for language in ('zh', 'en'):
+            with self.subTest(language=language):
+                self.ok('language=' + language + "; get_password <<<$'\\n'; [ \"$passw\" = 1234 ]; unset passw")
+                self.ok('language=' + language + "; get_password <<<$'custom\\n'; [ \"$passw\" = custom ]; unset passw")
 
-    def test_password_accepts_long_complex_and_rejects_account_name(self):
-        self.ok('username=NewAdmin; validate_password "Unique-Long-Secret-482!"; ! validate_password "NewAdmin-Long-Secret-482!"')
+    def test_password_input_and_confirmation_eof_stop(self):
+        self.stops('get_password </dev/null')
+        self.stops("get_password <<<'custom'")
 
     def test_no_password_echo(self):
         result = self.ok('username=NewAdmin; get_password <<\'EOF\'\nUnique-Long-Secret-482!\nUnique-Long-Secret-482!\nEOF\nunset passw')
         self.assertNotIn('Unique-Long-Secret', result.stdout + result.stderr)
 
-    def test_password_retries_weak_and_mismatched_input_in_both_languages(self):
-        for language, weak_message, mismatch_message in (
-            ('zh', '密码不符合要求', '两次密码不一致'),
-            ('en', 'Password does not meet the policy', 'Passwords did not match'),
+    def test_password_retries_mismatched_input_in_both_languages(self):
+        for language, mismatch_message in (
+            ('zh', '两次密码不一致'),
+            ('en', 'Passwords did not match'),
         ):
             with self.subTest(language=language):
                 result = self.ok('language=' + language + '''
 username=NewAdmin
 get_password <<'EOF'
-1234
-NewAdmin-Long-Secret-482!
 Unique-Long-Secret-482!
 Different-Long-Secret-483!
 Unique-Long-Secret-482!
@@ -126,7 +132,6 @@ Unique-Long-Secret-482!
 EOF
 [ "$passw" = 'Unique-Long-Secret-482!' ]; unset passw
 ''')
-                self.assertIn(weak_message, result.stdout)
                 self.assertIn(mismatch_message, result.stdout)
                 self.assertNotIn('Long-Secret', result.stdout + result.stderr)
 
@@ -307,10 +312,9 @@ list_volume_candidates() {
 }
 '''
 
-    def test_volume_menu_rejects_empty_leading_zero_and_expression(self):
+    def test_volume_menu_rejects_leading_zero_and_expression(self):
         self.ok(self.menu_fixture() + '''
 choose_volume System '' <<'EOF'
-
 01
 1+0
 2
@@ -318,7 +322,22 @@ EOF
 [ "$selected_volume_path" = '/Volumes/Second System' ]
 ''')
 
-    def test_single_candidate_still_requires_selection(self):
+    def test_volume_default_selects_first_candidate_in_both_languages(self):
+        for language in ('zh', 'en'):
+            with self.subTest(language=language):
+                result = self.ok(self.menu_fixture() + 'language=' + language + "; choose_volume System '' <<<''; [ \"$selected_volume_path\" = '/Volumes/First System' ]")
+                self.assertIn('1) /Volumes/First System [disk3s1]', result.stdout)
+
+    def test_volume_menu_accepts_listed_path_and_rejects_unlisted_path(self):
+        self.ok(self.menu_fixture() + '''
+choose_volume System '' <<'EOF'
+/Volumes/Not In List
+/Volumes/Second System
+EOF
+[ "$selected_volume_path" = '/Volumes/Second System' ]
+''')
+
+    def test_single_candidate_eof_stops_instead_of_using_default(self):
         self.stops(self.menu_fixture() + '''
 list_volume_candidates() { candidate_count=1; candidate_paths=(/Volumes/Only); candidate_devices=(disk3s1); candidate_groups=(group-a); }
 choose_volume System '' </dev/null
@@ -346,6 +365,24 @@ EOF
 [ "$username" = FreshName ]
 ''')
 
+    def test_username_defaults_to_apple_and_keeps_conflict_checks(self):
+        setup = '''
+require_terminal() { :; }
+homes_dir="$FIXTURES/homes"; users_dir="$FIXTURES/users"
+'''
+        for language in ('zh', 'en'):
+            with self.subTest(language=language):
+                self.ok(setup + 'language=' + language + "; user_inventory='root 0'; prompt_username <<<''; [ \"$username\" = apple ]")
+                self.ok(setup + 'language=' + language + '''
+user_inventory=$'root 0\nAPPLE 501'
+prompt_username <<'EOF'
+
+FreshApple
+EOF
+[ "$username" = FreshApple ]
+''')
+        self.stops(setup + "user_inventory='root 0'; prompt_username </dev/null")
+
     def test_action_menu_defaults_to_check(self):
         self.ok("require_terminal() { :; }; choose_action <<<''; [ \"$selected_action\" = check ]")
 
@@ -359,12 +396,14 @@ EOF
                 for answer in ('APPLY disk4s1 disk4s5', 'apply disk3s1 disk3s5', '确认 disk3s1 disk3s5'):
                     self.stops(setup + "confirm_targets <<<'" + answer + "'")
                 self.ok(setup + "confirm_targets <<<'APPLY disk3s1 disk3s5'")
+                self.ok(setup + "confirm_targets <<<''")
+                self.stops(setup + 'confirm_targets </dev/null')
 
     def test_check_and_apply_flags_conflict(self):
         self.stops('main --check --apply')
 
-    def interactive_main_fixture(self):
-        return '''
+    def interactive_main_fixture(self, real_volume_menu=False):
+        body = '''
 require_terminal() { :; }
 uname() { printf Darwin; }
 canonical_mount() { printf '%s' "$1"; }
@@ -390,11 +429,43 @@ read_users() { inventory_count=$((inventory_count + 1)); user_inventory='root 0'
 check_hosts() { :; }
 apply_changes() { fail 'Unexpected apply'; }
 '''
+        return body.replace('choose_volume() {', 'unused_choose_volume() {') if real_volume_menu else body
+
+    def test_complete_flow_with_return_defaults_in_both_languages(self):
+        body = self.interactive_main_fixture(real_volume_menu=True) + '''
+list_volume_candidates() {
+  candidate_count=1; candidate_groups=(11111111-2222-3333-4444-555555555555)
+  case "$1" in
+    System) candidate_paths=("$FIXTURES/System"); candidate_devices=(disk3s1) ;;
+    Data) [ "$2" = 11111111-2222-3333-4444-555555555555 ]; candidate_paths=("$FIXTURES/Data"); candidate_devices=(disk3s5) ;;
+  esac
+}
+function [ {
+  if builtin [ "$#" -eq 4 ] && builtin [ "$1" = "$EUID" ] && builtin [ "$2" = -eq ] && builtin [ "$3" = 0 ]; then return 0; fi
+  builtin [ "$@"
+}
+apply_changes() {
+  [ "$validation_count" -eq 2 ]; [ "$inventory_count" -eq 2 ]
+  [ "$username" = apple ]; [ "$passw" = 1234 ]
+  [ "$system_path" = "$FIXTURES/System" ]; [ "$data_path" = "$FIXTURES/Data" ]
+  printf 'MOCK DEFAULT APPLY AFTER RECHECKS\\n'
+}
+'''
+        for language in ('zh', 'en'):
+            for flags, lines in (('', 4), (' --apply', 6)):
+                with self.subTest(language=language, flags=flags):
+                    result = self.ok(body + 'main --lang ' + language + flags + " <<'EOF'\n" + '\n' * lines + 'EOF\n')
+                    if flags:
+                        self.assertIn('MOCK DEFAULT APPLY AFTER RECHECKS', result.stdout)
+                    else:
+                        self.assertNotIn('MOCK DEFAULT APPLY', result.stdout)
+                        self.assertIn('只读检查完成' if language == 'zh' else 'READ-ONLY PREFLIGHT COMPLETE', result.stdout)
 
     def test_no_argument_flow_defaults_to_read_only(self):
-        result = self.ok(self.interactive_main_fixture() + "main <<<$'\\nFreshAdmin\\n\\n'")
+        result = self.ok(self.interactive_main_fixture() + "main <<<$'\\n\\n'")
         self.assertIn('只读检查完成', result.stdout)
         self.assertIn('仅检查（默认）', result.stdout)
+        self.assertIn('新管理员：apple', result.stdout)
 
     def test_check_flag_skips_action_menu(self):
         result = self.ok(self.interactive_main_fixture() + '''
