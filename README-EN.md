@@ -2,6 +2,8 @@
 
 [简体中文](README.md) | **English**
 
+Web page: [https://cdn.h5ds.com/bypass-mdm](https://cdn.h5ds.com/bypass-mdm). Switch between the China CDN and GitHub download sources, copy commands with one click, and read usage instructions in your browser. The page source is [index.html](index.html) in the project root.
+
 Follow this sequence: erase the target installation, reinstall macOS, return to Recovery, run the script, then restart and sign in. These instructions cover Apple silicon Macs, including M3 Pro.
 
 **Erasing deletes files and accounts in the target installation. Back up your data, connect power, and prepare an internet connection first.** Run the script after macOS is installed; it does not erase or install macOS, remove Activation Lock, or release organization-side ownership.

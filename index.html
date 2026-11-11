@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Bypass MDM v3 命令复制页。提供国内 CDN 与 GitHub 下载方式，以及 macOS 恢复模式使用说明。">
+  <meta name="theme-color" content="#f4f7f5">
+  <title>Bypass MDM v3 · 一键复制命令</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230d7566'/%3E%3Cpath d='m17 21 11 11-11 11m18 0h13' fill='none' stroke='white' stroke-width='5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <style>
+    :root { color-scheme: light; --ink: #182c28; --muted: #6d7e77; --green: #0d7566; --line: #dce4df; --paper: #fff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 300px; color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f7f5; -webkit-font-smoothing: antialiased; }
+    body::before { content: ""; position: absolute; z-index: -1; inset: 0 0 auto; height: 1000px; pointer-events: none; background: radial-gradient(ellipse at 10% 8%, #f6e7da 0, transparent 46%), radial-gradient(ellipse at 90% 30%, #e0f0e9 0, transparent 48%), linear-gradient(#fbfaf6, #f4f7f5); }
+    a { color: inherit; text-decoration: none; }
+    button, select { font: inherit; }
+    button, summary, select { -webkit-tap-highlight-color: transparent; }
+    button { cursor: pointer; }
+    button:focus-visible, a:focus-visible, summary:focus-visible, select:focus-visible { outline: 3px solid #55a99b; outline-offset: 4px; }
+    .icon { width: 19px; height: 19px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .symbols { position: absolute; width: 0; height: 0; overflow: hidden; }
+    .nav { max-width: 1120px; margin: auto; padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { display: flex; align-items: center; gap: 11px; font-size: 14px; font-weight: 650; letter-spacing: -.2px; }
+    .brand-mark { display: grid; place-items: center; width: 33px; height: 33px; border-radius: 10px; background: var(--green); color: white; box-shadow: 0 3px 8px #0d75661a; }
+    .brand-divider { color: #a8b5ae; margin: 0 4px; font-weight: 400; }
+    .nav-right { display: flex; align-items: center; gap: 20px; }
+    .repo-link { display: flex; align-items: center; gap: 7px; color: #5e7067; font-size: 13px; }
+    .repo-link:hover, .text-link:hover { color: var(--green); }
+    .language { border: 1px solid #d6dfd8; background: #ffffffa8; color: #40584d; border-radius: 8px; padding: 9px 13px; font-size: 12px; font-weight: 600; }
+    .language:hover { background: white; }
+    main { width: min(100% - 40px, 800px); margin: 0 auto; }
+    .hero { padding: 30px 0 32px; text-align: center; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 8px; color: #638075; font-size: 12px; font-weight: 600; letter-spacing: .8px; }
+    .live-dot { width: 6px; height: 6px; background: #d18e59; border-radius: 50%; box-shadow: 0 0 0 4px #d18e5914; }
+    h1 { margin: 21px 0 17px; font-size: clamp(43px, 7.5vw, 76px); line-height: 1.1; font-weight: 720; letter-spacing: -4px; }
+    .version { position: relative; top: -5px; display: inline-block; vertical-align: middle; margin-left: 13px; padding: 6px 9px; border: 1px solid #b7d3c6; border-radius: 8px; color: #4e8970; font-size: 15px; letter-spacing: -.5px; font-weight: 550; }
+    .subtitle { margin: 0; color: #6b7c73; font-size: 15px; line-height: 1.9; }
+    .command-card { margin-top: 2px; border: 1px solid #d2dfd7; border-radius: 17px; background: #ffffffd9; box-shadow: 0 18px 60px -35px #2d66514d, 0 3px 12px -6px #2b564514; overflow: hidden; }
+    .source-row { padding: 10px; border-bottom: 1px solid #e4eae6; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .tabs { display: flex; align-items: center; gap: 5px; }
+    .tab { background: transparent; border: 1px solid transparent; border-radius: 9px; color: #7a8980; display: flex; align-items: center; gap: 8px; padding: 11px 15px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .tab[aria-selected="true"] { background: #edf5ef; color: #22694e; border-color: #d6e6d8; }
+    .tab:hover { color: #22694e; }
+    .recommended { font-size: 10px; font-weight: 600; background: #d9ead9; color: #497044; border-radius: 4px; padding: 3px 5px; letter-spacing: .1px; }
+    .protocol { display: flex; align-items: center; gap: 4px; color: #91a296; padding-right: 14px; font: 10px ui-monospace, "SFMono-Regular", Consolas, monospace; letter-spacing: .5px; }
+    .protocol .icon { width: 12px; height: 12px; }
+    .terminal-top { padding: 22px 25px 0; display: flex; align-items: center; gap: 7px; }
+    .window-dot { width: 8px; height: 8px; border-radius: 100%; background: #e9b9a5; }
+    .window-dot:nth-child(2) { background: #e5cd91; }
+    .window-dot:nth-child(3) { background: #9bc8b0; }
+    .terminal-label { margin-left: auto; color: #a1afa6; font: 10px ui-monospace, "SFMono-Regular", Consolas, monospace; }
+    .command-wrap { display: flex; align-items: flex-start; gap: 12px; padding: 25px 25px 18px; }
+    .prompt-sign { color: #1b947b; font: 15px/1.9 ui-monospace, "SFMono-Regular", Consolas, monospace; user-select: none; }
+    .command { display: block; width: 100%; min-height: 65px; margin: 0; padding: 0; overflow: hidden; border: 0; resize: none; border-radius: 0; background: transparent; color: #344f43; font: 13px/1.95 ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; letter-spacing: -.15px; word-break: break-all; white-space: pre-wrap; outline-offset: 4px; }
+    .command:focus-visible { outline: 2px solid #55a99b; border-radius: 3px; }
+    .command-footer { padding: 0 25px 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+    .source-info { margin: 0; color: #83948a; font-size: 11px; line-height: 1.7; }
+    .text-link { font-size: 11px; color: #688b78; white-space: nowrap; display: flex; align-items: center; gap: 5px; }
+    .text-link .icon { width: 13px; height: 13px; }
+    .copy-area { padding: 25px 0 0; text-align: center; }
+    .copy-button { display: inline-flex; justify-content: center; align-items: center; gap: 9px; min-width: 192px; border: 0; border-radius: 11px; padding: 16px 25px; background: var(--green); color: white; font-size: 14px; font-weight: 600; box-shadow: 0 8px 18px -9px #0d756680; transition: background .16s, transform .16s; }
+    .copy-button:hover { background: #096455; transform: translateY(-1px); }
+    .copy-button:active { transform: translateY(0); }
+    .copy-button.copied { background: #3d865d; }
+    .copy-note { color: #8b9b90; font-size: 11px; margin: 11px 0 0; }
+    .status { min-height: 20px; margin: 8px 0 7px; color: #23765d; font-size: 12px; line-height: 1.65; }
+    .status.error { color: #a36039; }
+    .options { border-top: 1px solid #e1e8e1; margin-top: 2px; }
+    details { border-bottom: 1px solid #dce5dd; }
+    summary { display: flex; align-items: center; justify-content: space-between; list-style: none; cursor: pointer; padding: 19px 2px; color: #4f6959; font-size: 13px; font-weight: 600; }
+    summary::-webkit-details-marker { display: none; }
+    summary .icon { width: 15px; height: 15px; color: #839b8b; transition: transform .2s; }
+    details[open] > summary .icon { transform: rotate(180deg); }
+    .option-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 1px 1px 22px; }
+    label { display: grid; gap: 9px; color: #7c8f81; font-size: 11px; }
+    .option-fields label { margin-bottom: 9px; }
+    select { padding: 11px 12px; width: 100%; border: 1px solid #d8e3d9; border-radius: 8px; background: #ffffffb3; color: #3f5e4b; font-size: 12px; }
+    .steps { margin: 0; padding: 0 0 3px; list-style: none; counter-reset: steps; }
+    .steps li { position: relative; padding: 2px 4px 19px 35px; counter-increment: steps; }
+    .steps li::before { content: counter(steps, decimal-leading-zero); position: absolute; left: 2px; top: 5px; color: #8ba08d; font: 10px ui-monospace, Consolas, monospace; }
+    .steps strong { font-size: 12px; color: #42604c; font-weight: 600; }
+    .steps p { margin: 6px 0 0; color: #809081; font-size: 12px; line-height: 1.85; }
+    .defaults { padding: 22px 0 5px; display: flex; justify-content: center; flex-wrap: wrap; gap: 9px 24px; color: #849486; font-size: 11px; }
+    .defaults b { color: #56725b; font-weight: 550; margin-left: 6px; }
+    .footnote { max-width: 650px; margin: 12px auto 0; color: #97a398; font-size: 10px; line-height: 1.9; text-align: center; }
+    footer { max-width: 1120px; margin: 46px auto 0; padding: 22px 32px 27px; display: flex; justify-content: space-between; align-items: center; gap: 20px; color: #9aab9d; font-size: 10px; }
+    footer a { display: flex; gap: 5px; align-items: center; }
+    footer .icon { width: 12px; height: 12px; }
+    .no-js { color: #a36039; font-size: 12px; text-align: center; }
+    @media (max-width: 600px) {
+      .nav { padding: 20px; }
+      .brand { font-size: 12px; gap: 8px; }
+      .nav-right { gap: 11px; }
+      .repo-link span { display: none; }
+      .hero { padding: 44px 0 28px; }
+      h1 { letter-spacing: -2.6px; margin-top: 19px; }
+      .version { top: -2px; margin-left: 6px; font-size: 12px; padding: 5px 6px; }
+      .subtitle { font-size: 12px; }
+      .eyebrow { font-size: 10px; letter-spacing: .2px; }
+      .source-row { padding: 8px; }
+      .tab { padding: 10px 11px; gap: 6px; font-size: 12px; }
+      .protocol { display: none; }
+      .terminal-top { padding: 20px 18px 0; }
+      .command-wrap { padding: 21px 18px 17px; gap: 9px; }
+      .command { font-size: 11px; min-height: 110px; line-height: 1.9; }
+      .command-footer { padding: 0 18px 20px; align-items: flex-end; }
+      .source-info { font-size: 10px; max-width: 225px; }
+      .text-link { font-size: 10px; }
+      .option-fields { grid-template-columns: 1fr; gap: 15px; }
+      .defaults { gap: 9px 16px; }
+      footer { margin-top: 30px; padding: 22px 20px; font-size: 9px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+  <svg class="symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m5 6 6 6-6 6m9 0h5"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="13" rx="2"/><path d="M15 4H5a2 2 0 0 0-2 2v10"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M6 18 18 6M6 6h12v12"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 19c-4 1-4-2-6-2m12 5v-4a3.4 3.4 0 0 0-1-2.7c3.3-.4 6.8-1.6 6.8-7.3A5.7 5.7 0 0 0 19 4a5.3 5.3 0 0 0-.1-4S17.6-.4 15 1.5a14 14 0 0 0-6 0C6.4-.4 5.1 0 5.1 0A5.3 5.3 0 0 0 5 4a5.7 5.7 0 0 0-1.8 4c0 5.7 3.5 6.9 6.8 7.3A3.4 3.4 0 0 0 9 18v4" transform="translate(1 1) scale(.9)"/></symbol>
+  </svg>
+  <nav class="nav" aria-label="主导航" data-nav>
+    <a class="brand" href="https://github.com/wtone/bypass-mdm" target="_blank" rel="noopener noreferrer">
+      <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-terminal"/></svg></span>
+      <span>wtone<span class="brand-divider">/</span>bypass-mdm</span>
+    </a>
+    <div class="nav-right">
+      <a class="repo-link" href="https://github.com/wtone/bypass-mdm" target="_blank" rel="noopener noreferrer" aria-label="GitHub 项目" data-repo>
+        <svg class="icon" aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span>
+      </a>
+      <button class="language" id="languageToggle" type="button" aria-label="Switch to English">English</button>
+    </div>
+  </nav>
+  <main>
+    <header class="hero">
+      <div class="eyebrow"><span class="live-dot" aria-hidden="true"></span><span data-i18n="eyebrow">APPLE 芯片 MAC · 恢复模式</span></div>
+      <h1>Bypass MDM<span class="version">v3</span></h1>
+      <p class="subtitle" data-i18n="subtitle">复制命令，粘贴到恢复模式终端，按提示继续。</p>
+    </header>
+    <section aria-label="命令复制" data-command-section>
+      <div class="command-card">
+        <div class="source-row">
+          <div class="tabs" role="tablist" aria-label="下载地址" data-tablist>
+            <button type="button" class="tab" id="sourceCdn" role="tab" aria-selected="true" aria-controls="commandPanel" tabindex="0" data-source="cdn">
+              <span data-i18n="cdn">国内地址</span><span class="recommended" data-i18n="recommended">推荐</span>
+            </button>
+            <button type="button" class="tab" id="sourceGithub" role="tab" aria-selected="false" aria-controls="commandPanel" tabindex="-1" data-source="github"><span data-i18n="github">GitHub 地址</span></button>
+          </div>
+          <span class="protocol"><svg class="icon" aria-hidden="true"><use href="#i-lock"/></svg>HTTPS</span>
+        </div>
+        <div id="commandPanel" role="tabpanel" aria-labelledby="sourceCdn">
+          <div class="terminal-top" aria-hidden="true"><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span><span class="terminal-label">macOS Recovery / Terminal</span></div>
+          <div class="command-wrap"><span class="prompt-sign" aria-hidden="true">$</span><textarea id="commandText" class="command" readonly spellcheck="false" autocapitalize="off" autocomplete="off" aria-label="终端命令">cd /tmp &amp;&amp; curl -fsSL https://cdn.h5ds.com/bypass-mdm/bypass-mdm-v3.sh -o bypass-mdm-v3.sh &amp;&amp; chmod +x ./bypass-mdm-v3.sh &amp;&amp; ./bypass-mdm-v3.sh</textarea></div>
+          <div class="command-footer">
+            <p class="source-info" id="sourceInfo">国内 CDN 下载，适合无法访问 GitHub 的网络。</p>
+            <a class="text-link" id="sourceLink" href="https://cdn.h5ds.com/bypass-mdm/bypass-mdm-v3.sh" target="_blank" rel="noopener noreferrer"><span data-i18n="download">下载脚本</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          </div>
+        </div>
+      </div>
+      <div class="copy-area">
+        <button type="button" class="copy-button" id="copyButton"><svg class="icon" aria-hidden="true"><use id="copyIcon" href="#i-copy"/></svg><span id="copyLabel">复制命令</span></button>
+        <p class="copy-note" data-i18n="copyNote">在恢复模式中打开「实用工具 → 终端」后粘贴</p>
+        <p class="status" id="copyStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      </div>
+      <noscript><p class="no-js">浏览器未启用 JavaScript。可手动选择上方国内地址命令并复制。 / JavaScript is disabled. Select and copy the CDN command above manually.</p></noscript>
+    </section>
+    <section class="options" aria-label="使用选项和说明" data-options-section>
+      <details>
+        <summary><span data-i18n="options">更多选项</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+        <div class="option-fields">
+          <div><label for="runMode" data-i18n="modeLabel">运行方式</label><select id="runMode"><option value="interactive" data-i18n="interactive">交互菜单（默认）</option><option value="check" data-i18n="check">仅检查 · 不执行修改</option><option value="apply" data-i18n="apply">进入执行流程 · 仍需确认</option></select></div>
+          <div><label for="scriptLanguage" data-i18n="scriptLanguage">脚本语言</label><select id="scriptLanguage"><option value="auto" data-i18n="autoLanguage">启动时选择（默认中文）</option><option value="zh" data-i18n="chinese">中文 · 跳过语言选择</option><option value="en" data-i18n="english">English · Skip language selection</option></select></div>
+        </div>
+      </details>
+      <details>
+        <summary><span data-i18n="guide">安装与使用</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
+        <ol class="steps">
+          <li><strong data-i18n="step1Title">备份、抹盘并重装 macOS</strong><p data-i18n="step1">先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。</p></li>
+          <li><strong data-i18n="step2Title">安装后返回恢复模式</strong><p data-i18n="step2">安装完成后再次进入恢复模式，挂载或解锁目标系统卷及同组数据卷，打开「实用工具 → 终端」并连接网络。</p></li>
+          <li><strong data-i18n="step3Title">复制命令，按提示操作</strong><p data-i18n="step3">优先选择国内地址。粘贴命令后核对卷路径与设备编号；回车使用显示的默认值。操作菜单默认仅检查，输入 2 才执行修改。</p></li>
+          <li><strong data-i18n="step4Title">确认结果，再重启登录</strong><p data-i18n="step4">执行时可回车确认当前目标磁盘及密码。已有 apple 账户时需换用新名称。若发生错误，先记录报错和备份位置；完成后重启并尝试登录。</p></li>
+        </ol>
+        <p style="margin: 0 0 22px"><a class="text-link" id="readmeLink" href="https://github.com/wtone/bypass-mdm/blob/main/README.md" target="_blank" rel="noopener noreferrer"><span data-i18n="fullGuide">查看完整使用说明</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
+      </details>
+    </section>
+    <div class="defaults"><span><span data-i18n="defaultUser">默认用户名</span><b>apple</b></span><span><span data-i18n="defaultPassword">默认密码</span><b>1234</b></span><span><span data-i18n="defaultAction">默认操作</span><b data-i18n="checkShort">仅检查</b></span></div>
+    <p class="footnote" data-i18n="footnote">可输入任意自定义密码；默认密码较弱，建议登录后修改。脚本不解除激活锁或组织端设备归属，尚未在真实 Mac 恢复模式验证。</p>
+  </main>
+  <footer><span>wtone / bypass-mdm · MIT License</span><a href="https://github.com/wtone/bypass-mdm" target="_blank" rel="noopener noreferrer"><span data-i18n="openSource">开源项目</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></footer>
+  <script>
+    'use strict';
+    // Download addresses and accepted flags are fixed; no external dependencies.
+    const sources = {
+      cdn: 'https://cdn.h5ds.com/bypass-mdm/bypass-mdm-v3.sh',
+      github: 'https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh'
+    };
+    const messages = {
+      zh: {
+        title: 'Bypass MDM v3 · 一键复制命令', eyebrow: 'APPLE 芯片 MAC · 恢复模式', subtitle: '复制命令，粘贴到恢复模式终端，按提示继续。',
+        cdn: '国内地址', github: 'GitHub 地址', recommended: '推荐', download: '下载脚本', copy: '复制命令', copied: '已复制',
+        cdnInfo: '国内 CDN 下载，适合无法访问 GitHub 的网络。', githubInfo: '从 GitHub 项目下载，需要能够访问 GitHub 下载服务。',
+        copyNote: '在恢复模式中打开「实用工具 → 终端」后粘贴', copiedStatus: '命令已复制，可前往终端粘贴。', manual: '自动复制不可用，命令已选中，请按 ⌘C 或 Ctrl+C 复制。',
+        options: '更多选项', modeLabel: '运行方式', interactive: '交互菜单（默认）', check: '仅检查 · 不执行修改', apply: '进入执行流程 · 仍需确认',
+        scriptLanguage: '脚本语言', autoLanguage: '启动时选择（默认中文）', chinese: '中文 · 跳过语言选择', english: 'English · Skip language selection',
+        guide: '安装与使用', step1Title: '备份、抹盘并重装 macOS', step1: '先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。',
+        step2Title: '安装后返回恢复模式', step2: '安装完成后再次进入恢复模式，挂载或解锁目标系统卷及同组数据卷，打开「实用工具 → 终端」并连接网络。',
+        step3Title: '复制命令，按提示操作', step3: '优先选择国内地址。粘贴命令后核对卷路径与设备编号；回车使用显示的默认值。操作菜单默认仅检查，输入 2 才执行修改。',
+        step4Title: '确认结果，再重启登录', step4: '执行时可回车确认当前目标磁盘及密码。已有 apple 账户时需换用新名称。若发生错误，先记录报错和备份位置；完成后重启并尝试登录。',
+        fullGuide: '查看完整使用说明', defaultUser: '默认用户名', defaultPassword: '默认密码', defaultAction: '默认操作', checkShort: '仅检查', openSource: '开源项目',
+        footnote: '可输入任意自定义密码；默认密码较弱，建议登录后修改。脚本不解除激活锁或组织端设备归属，尚未在真实 Mac 恢复模式验证。',
+        nav: '主导航', commandSection: '命令复制', tablist: '下载地址', command: '终端命令', optionsSection: '使用选项和说明', repo: 'GitHub 项目'
+      },
+      en: {
+        title: 'Bypass MDM v3 · Copy the command', eyebrow: 'APPLE SILICON MAC · RECOVERY MODE', subtitle: 'Copy the command. Paste it into Recovery Terminal. Follow the prompts.',
+        cdn: 'China CDN', github: 'GitHub', recommended: 'Recommended', download: 'Download', copy: 'Copy command', copied: 'Copied',
+        cdnInfo: 'Mainland China CDN, for networks that cannot access GitHub.', githubInfo: 'Download from the GitHub project. Requires access to GitHub downloads.',
+        copyNote: 'Open Utilities → Terminal in macOS Recovery, then paste', copiedStatus: 'Command copied. You can now paste it into Terminal.', manual: 'Automatic copy is unavailable. The command is selected; press ⌘C or Ctrl+C to copy.',
+        options: 'More options', modeLabel: 'Run mode', interactive: 'Interactive menu (default)', check: 'Check only · No changes', apply: 'Apply flow · Confirmation required',
+        scriptLanguage: 'Script language', autoLanguage: 'Choose at startup (Chinese by default)', chinese: '中文 · Skip language selection', english: 'English · Skip language selection',
+        guide: 'Installation & usage', step1Title: 'Back up, erase, and reinstall macOS', step1: 'Back up your data first. Shut down, then hold the power button and choose Options → Continue. Verify the target in Disk Utility before erasing its volume group and reinstalling macOS. Erasing deletes files and accounts in that installation.',
+        step2Title: 'Return to Recovery after installation', step2: 'Start Recovery again. Mount or unlock the offline System and matching Data volumes, open Utilities → Terminal, and connect to the internet.',
+        step3Title: 'Copy the command and follow the prompts', step3: 'Use the China CDN when GitHub is unavailable. Review the paths and device IDs before accepting defaults with Return. The action menu defaults to check only; choose 2 to apply changes.',
+        step4Title: 'Review the result, then restart and sign in', step4: 'During apply, Return accepts the displayed disks and password. Choose a new username if apple already exists. Record any error and backup path before retrying. After completion, restart and try signing in.',
+        fullGuide: 'Read the full guide', defaultUser: 'Default username', defaultPassword: 'Default password', defaultAction: 'Default action', checkShort: 'Check only', openSource: 'Open source',
+        footnote: 'Any custom password is allowed. Change the weak default password after signing in. The script does not remove Activation Lock or organization-side ownership and has not been verified in real Mac Recovery.',
+        nav: 'Main navigation', commandSection: 'Copy a command', tablist: 'Download source', command: 'Terminal command', optionsSection: 'Options and instructions', repo: 'GitHub repository'
+      }
+    };
+    let pageLanguage = 'zh';
+    let source = 'cdn';
+    let copyTimer;
+    const commandText = document.getElementById('commandText');
+    const copyButton = document.getElementById('copyButton');
+    const copyLabel = document.getElementById('copyLabel');
+    const copyIcon = document.getElementById('copyIcon');
+    const status = document.getElementById('copyStatus');
+    const tabs = Array.from(document.querySelectorAll('[data-source]'));
+    const runMode = document.getElementById('runMode');
+    const scriptLanguage = document.getElementById('scriptLanguage');
+
+    function fitCommand() {
+      commandText.style.height = 'auto';
+      commandText.style.height = commandText.scrollHeight + 'px';
+    }
+    function resetCopy() {
+      clearTimeout(copyTimer);
+      copyButton.classList.remove('copied');
+      copyLabel.textContent = messages[pageLanguage].copy;
+      copyIcon.setAttribute('href', '#i-copy');
+      status.textContent = '';
+      status.classList.remove('error');
+    }
+    function renderCommand() {
+      const modeFlags = { interactive: '', check: ' --check', apply: ' --apply' };
+      const languageFlags = { auto: '', zh: ' --lang zh', en: ' --lang en' };
+      commandText.value = 'cd /tmp && curl -fsSL ' + sources[source] + ' -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh' + (modeFlags[runMode.value] || '') + (languageFlags[scriptLanguage.value] || '');
+      document.getElementById('sourceInfo').textContent = messages[pageLanguage][source + 'Info'];
+      document.getElementById('sourceLink').href = sources[source];
+      tabs.forEach(function (tab) {
+        const active = tab.dataset.source === source;
+        tab.setAttribute('aria-selected', String(active));
+        tab.tabIndex = active ? 0 : -1;
+        if (active) document.getElementById('commandPanel').setAttribute('aria-labelledby', tab.id);
+      });
+      resetCopy();
+      fitCommand();
+    }
+    tabs.forEach(function (tab, index) {
+      tab.addEventListener('click', function () { source = tab.dataset.source; renderCommand(); });
+      tab.addEventListener('keydown', function (event) {
+        let next;
+        if (event.key === 'ArrowRight') next = (index + 1) % tabs.length;
+        else if (event.key === 'ArrowLeft') next = (index + tabs.length - 1) % tabs.length;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = tabs.length - 1;
+        else return;
+        event.preventDefault();
+        tabs[next].click();
+        tabs[next].focus();
+      });
+    });
+    runMode.addEventListener('change', renderCommand);
+    scriptLanguage.addEventListener('change', renderCommand);
+    window.addEventListener('resize', fitCommand);
+    document.getElementById('languageToggle').addEventListener('click', function () {
+      pageLanguage = pageLanguage === 'zh' ? 'en' : 'zh';
+      const text = messages[pageLanguage];
+      document.documentElement.lang = pageLanguage === 'zh' ? 'zh-CN' : 'en';
+      document.title = text.title;
+      document.querySelectorAll('[data-i18n]').forEach(function (element) { element.textContent = text[element.dataset.i18n]; });
+      document.querySelector('[data-nav]').setAttribute('aria-label', text.nav);
+      document.querySelector('[data-repo]').setAttribute('aria-label', text.repo);
+      document.querySelector('[data-command-section]').setAttribute('aria-label', text.commandSection);
+      document.querySelector('[data-tablist]').setAttribute('aria-label', text.tablist);
+      document.querySelector('[data-options-section]').setAttribute('aria-label', text.optionsSection);
+      commandText.setAttribute('aria-label', text.command);
+      this.textContent = pageLanguage === 'zh' ? 'English' : '简体中文';
+      this.setAttribute('aria-label', pageLanguage === 'zh' ? 'Switch to English' : '切换到简体中文');
+      document.getElementById('readmeLink').href = 'https://github.com/wtone/bypass-mdm/blob/main/' + (pageLanguage === 'zh' ? 'README.md' : 'README-EN.md');
+      renderCommand();
+    });
+    copyButton.addEventListener('click', async function () {
+      const value = commandText.value;
+      resetCopy();
+      let copied = false;
+      if (navigator.clipboard && window.isSecureContext) {
+        try { await navigator.clipboard.writeText(value); copied = true; } catch (_) { /* Try the local-file fallback below. */ }
+      }
+      if (!copied) {
+        commandText.focus({ preventScroll: true });
+        commandText.select();
+        commandText.setSelectionRange(0, value.length);
+        try { copied = document.execCommand('copy'); } catch (_) { copied = false; }
+      }
+      if (copied) {
+        copyButton.classList.add('copied');
+        copyLabel.textContent = messages[pageLanguage].copied;
+        copyIcon.setAttribute('href', '#i-check');
+        status.textContent = messages[pageLanguage].copiedStatus;
+        copyButton.focus({ preventScroll: true });
+        copyTimer = setTimeout(resetCopy, 2600);
+      } else {
+        status.classList.add('error');
+        status.textContent = messages[pageLanguage].manual;
+      }
+    });
+    renderCommand();
+  </script>
+</body>
+</html>
