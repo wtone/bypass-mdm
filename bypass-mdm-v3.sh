@@ -5,7 +5,7 @@
 # Upstream commit: 60583be37d41f314cb04a99e260071fc31a2eaf4
 # Upstream SHA256: 1aa477aad2ee4b2dbf2e59214dee05b73c81b392d74f89ac341db77597a98256
 # Offline macOS volumes only. NOT verified on a real Mac; no guarantee of MDM removal.
-# No arguments: interactive selection and action menu (default: preflight).
+# No arguments: automatic volumes, grouped credentials, one final action menu.
 # Parameter mode remains read-only unless --apply or an interactive apply choice is used.
 set +x
 set -euo pipefail
@@ -35,18 +35,15 @@ message() {
             'Cannot read APFS volume inventory.') format='无法读取 APFS 卷列表。' ;;
             'Cannot inspect the boot volume.') format='无法读取当前启动卷的信息。' ;;
             'No mounted offline %s volume is available. Mount/unlock the correct volumes in Disk Utility, then rerun.') format='没有可用的已挂载离线 %s 卷。请先在磁盘工具中挂载或解锁正确的卷，再重新运行。' ;;
-            '\nSelect %s volume (q to cancel):\n') format='\n请选择 %s 卷（输入 q 取消）：\n' ;;
-            '  %s) %s [%s; group %s]\n') format='  %s) %s [%s；卷组 %s]\n' ;;
-            'Volume number or listed mount path [1]: ') format='卷编号或列表中的挂载路径 [1]：' ;;
-            'Default volume: 1) %s [%s]\n') format='默认卷：1) %s [%s]\n' ;;
-            'Volume selection interrupted.') format='卷选择已中断。' ;;
+            'Automatically selected %s volume: %s [%s]') format='自动选择 %s 卷：%s [%s]' ;;
+            'Multiple %s candidates found; using the first. Use --system/--data to specify another target.') format='发现多个 %s 候选卷，使用第一个；需要其他目标时可通过 --system/--data 指定。' ;;
             'Cancelled. No changes made.') format='已取消，未进行任何修改。' ;;
-            'Enter a listed number or mount path, Return for 1, or q to cancel.') format='请输入列表中的编号或挂载路径，回车选 1，或输入 q 取消。' ;;
+            '\nAccount setup (written only if you choose to apply):') format='\n账户设置（仅在确认执行后写入）：' ;;
             'New username [apple] (Ctrl+C to cancel): ') format='请输入新用户名 [apple]（Ctrl+C 取消）：' ;;
             'Username input interrupted.') format='用户名输入已中断。' ;;
             'Use 1-31 ASCII letters/digits/_/-, beginning with a letter.') format='请使用 1–31 个英文字母、数字、_ 或 -，且以英文字母开头。' ;;
             'Choose another NEW username; no existing account will be reused.') format='请换一个全新用户名；不会复用已有账户。' ;;
-            '\n1) Check only (default)\n2) Apply changes\nq) Cancel\n') format='\n1) 仅检查（默认）\n2) 执行修改\nq) 取消\n' ;;
+            '\n1) Check only (default)\n2) Confirm the targets above and apply changes\nq) Cancel\n') format='\n1) 仅检查（默认）\n2) 确认以上目标并执行修改\nq) 取消\n' ;;
             'Action [1]: ') format='请选择操作 [1]：' ;;
             'Action selection interrupted.') format='操作选择已中断。' ;;
             'Enter 1, 2, or q.') format='请输入 1、2 或 q。' ;;
@@ -98,8 +95,14 @@ message() {
             'Cannot create backup directory.') format='无法创建备份目录。' ;;
             'Backup (contains device-management configuration; keep private): %s') format='备份位置（包含设备管理配置，请妥善保管）：%s' ;;
             'Creating a NEW administrator. If interrupted, partial changes may remain; inspect the backup manifest before retrying.') format='正在创建全新管理员账户。若中断，可能留下部分修改；重试前请先检查备份清单。' ;;
-            'Local changes completed without a command error. New administrator: %s') format='本地修改已完成，命令未报告错误。新管理员：%s' ;;
-            'This does not verify successful MDM removal, Secure Token/FileVault access, or release from the organization.') format='这不代表已验证 MDM 移除成功、获得 Secure Token/FileVault 访问权限，或解除组织端归属。' ;;
+            '  ✓ MDM bypass setup completed!\n') format='  ✓ MDM 绕过配置已完成！\n' ;;
+            '  Login username: %s') format='  登录用户名：%s' ;;
+            '  Password: the password you just entered') format='  登录密码：刚才设置的密码' ;;
+            '  Configuration backup: %s') format='  配置备份：%s' ;;
+            'Next steps:') format='下一步：' ;;
+            '  1. Close this terminal window.') format='  1. 关闭当前终端窗口。' ;;
+            '  2. Restart your Mac from the Apple menu.') format='  2. 通过苹果菜单重新启动 Mac。' ;;
+            '  3. Sign in as %s with the password you just entered.') format='  3. 使用 %s 和刚才设置的密码登录。' ;;
             'Missing value for %s') format='参数 %s 缺少值。' ;;
             'Unknown option: %s') format='未知参数：%s' ;;
             '--check and --apply cannot be combined.') format='--check 与 --apply 不能同时使用。' ;;
@@ -115,7 +118,6 @@ message() {
             'READ-ONLY PREFLIGHT COMPLETE. No files, accounts or volumes were changed.') format='只读检查完成，未修改任何文件、账户或卷。' ;;
             'Apply requires root in Recovery. No changes made.') format='执行修改需要恢复模式中的 root 权限，未进行任何修改。' ;;
             'WARNING: six-domain profile blocks activation-related Apple services; acmdm.apple.com was not verified in current official documentation.') format='警告：六域名选项会屏蔽 Apple 激活相关服务；acmdm.apple.com 尚未通过当前官方文档核实。' ;;
-            'This creates a persistent administrator and edits offline system state. It does not grant Secure Token or volume ownership.') format='本操作会创建持久管理员账户并修改离线系统状态，不会授予 Secure Token 或卷所有权。' ;;
             'Target directory is not writable: %s') format='目标目录不可写：%s' ;;
             'Selected hosts file is not writable.') format='所选 hosts 文件不可写。' ;;
             'Preflight stopped (exit status %s). No target files or accounts were changed.') format='检查阶段已停止（退出码 %s），未修改目标文件或账户。' ;;
@@ -159,14 +161,14 @@ usage() {
   bash bypass-mdm-v3.sh --system '/Volumes/系统卷' \
     --data '/Volumes/数据卷' --username NEWNAME [--domains conservative|xiaohu-six] [--check|--apply]
 
-默认中文。交互启动时回车选中文，输入 2 选英文。
---lang zh|en：直接指定中文或英文，跳过语言选择。
-省略卷或用户名时，交互选择已挂载的离线卷并输入全新用户名。
-回车选择列表中的第一个卷；数据卷仅列出同组候选项。也可输入其他编号或列表中的挂载路径。
+默认中文，不再显示语言选择；--lang en 使用英文。
+省略卷路径时自动使用第一个已挂载离线系统卷，以及同组数据卷，不需选卷或回车。
+需要其他卷时通过 --system 和 --data 指定完整挂载路径。
 用户名默认 apple；密码默认 1234，允许任意自定义密码，不校验强度。
-密码确认时回车接受所选密码；磁盘确认时回车接受当前显示的目标设备编号。
-操作菜单提供仅检查（默认）、执行修改或取消。
---check：固定仅检查；--apply：进入执行流程，两者不能同时使用。
+用户名和密码连续输入，再核对目标摘要。输入 2 确认执行，回车仅检查，q 取消。
+密码确认时回车接受所选密码；检查或取消时丢弃密码。
+--check：仅检查且不询问密码；--apply：进入执行流程，最后确认一次目标磁盘。
+--check 与 --apply 不能同时使用。
 完整提供目标参数且未指定 --apply 时，仅进行检查。
 执行修改需要 root 权限、目标设备编号确认、密码确认及写入前复查。
 脚本备份相关文件，创建一个全新管理员，再修改 hosts 和设置标记。
@@ -184,15 +186,14 @@ Usage (macOS Recovery, mounted/unlocked offline System and Data volumes):
   bash bypass-mdm-v3.sh --system '/Volumes/Your System' \
     --data '/Volumes/Your Data' --username NEWNAME [--domains conservative|xiaohu-six] [--check|--apply]
 
-Chinese is the default. At interactive startup, Return selects Chinese; 2 selects English.
---lang zh|en: set the language directly and skip language selection.
-Missing volumes or username: choose mounted offline volumes and enter a new username.
-Return selects the first listed volume; Data candidates must match the System group.
-You may enter another number or a listed mount path. Username defaults to apple.
+Chinese is the default; there is no language menu. Use --lang en for English.
+Missing paths: automatically select the first mounted offline System and matching Data volumes.
+No volume input is needed. Use --system/--data to specify different mount paths.
+Username defaults to apple. Username and password are entered together, before the target summary.
 Password defaults to 1234; any custom password is accepted without strength checks.
-Return at password confirmation accepts the chosen password; at disk confirmation it accepts the displayed target IDs.
-Interactive mode then offers check only (default), apply, or cancel.
---check: preflight only, even in interactive mode. --apply: enter the apply flow.
+Return confirms the chosen password. Passwords are discarded on check-only or cancel.
+The final menu offers check only (default), confirm targets and apply (2), or cancel (q).
+--check: preflight only, without asking for a password. --apply: apply flow with one final disk confirmation.
 With all target arguments and neither action flag: preflight only, as before.
 Apply requires root, rechecks, confirmation of target IDs, and password confirmation.
 Apply backs up affected files, creates ONE NEW administrator, and then applies
@@ -243,21 +244,6 @@ require_terminal() {
     [ -t 0 ] && [ -t 1 ] || fail 'Interactive input requires a terminal. Download the file and run it directly; do not pipe it into bash.'
 }
 
-choose_language() {
-    local choice
-    require_terminal
-    printf '\n语言 / Language\n1) 简体中文（默认 / default）\n2) English\nq) 取消 / Cancel\n'
-    while true; do
-        IFS= read -r -p '语言 / Language [1]: ' choice || fail 'Cancelled. No changes made.'
-        case "$choice" in
-            ''|1|zh) language=zh; return 0 ;;
-            2|en) language=en; return 0 ;;
-            q|Q) fail 'Cancelled. No changes made.' ;;
-            *) printf '请输入 1、2 或 q / Enter 1, 2, or q.\n' ;;
-        esac
-    done
-}
-
 volume_group_for_path() {
     local xml group
     xml=$(diskutil info -plist "$1") || fail 'Cannot inspect the selected volume.'
@@ -298,29 +284,15 @@ list_volume_candidates() {
     done
 }
 
-choose_volume() {
-    local wanted_role="$1" required_group="$2" choice index
-    require_terminal
+select_default_volume() {
+    local wanted_role="$1" required_group="$2"
     list_volume_candidates "$wanted_role" "$required_group"
     [ "$candidate_count" -gt 0 ] || fail 'No mounted offline %s volume is available. Mount/unlock the correct volumes in Disk Utility, then rerun.' "$wanted_role"
-    message '\nSelect %s volume (q to cancel):\n' "$wanted_role"
-    for ((index=0; index<candidate_count; index++)); do
-        message '  %s) %s [%s; group %s]\n' "$((index + 1))" "${candidate_paths[$index]}" "${candidate_devices[$index]}" "${candidate_groups[$index]}"
-    done
-    message 'Default volume: 1) %s [%s]\n' "${candidate_paths[0]}" "${candidate_devices[0]}"
-    while true; do
-        IFS= read -r -p "$(message 'Volume number or listed mount path [1]: ')" choice || fail 'Volume selection interrupted.'
-        choice=${choice:-1}
-        case "$choice" in q|Q) fail 'Cancelled. No changes made.' ;; esac
-        # Compare strings to the numbered choices; never evaluate untrusted arithmetic.
-        for ((index=0; index<candidate_count; index++)); do
-            if [ "$choice" = "$((index + 1))" ] || [ "$choice" = "${candidate_paths[$index]}" ]; then
-                selected_volume_path="${candidate_paths[$index]}"
-                return 0
-            fi
-        done
-        info 'Enter a listed number or mount path, Return for 1, or q to cancel.'
-    done
+    selected_volume_path="${candidate_paths[0]}"
+    info 'Automatically selected %s volume: %s [%s]' "$wanted_role" "$selected_volume_path" "${candidate_devices[0]}"
+    if [ "$candidate_count" -gt 1 ]; then
+        info 'Multiple %s candidates found; using the first. Use --system/--data to specify another target.' "$wanted_role"
+    fi
 }
 
 prompt_username() {
@@ -344,7 +316,7 @@ prompt_username() {
 choose_action() {
     local choice
     require_terminal
-    message '\n1) Check only (default)\n2) Apply changes\nq) Cancel\n'
+    message '\n1) Check only (default)\n2) Confirm the targets above and apply changes\nq) Cancel\n'
     while true; do
         IFS= read -r -p "$(message 'Action [1]: ')" choice || fail 'Action selection interrupted.'
         case "$choice" in
@@ -544,20 +516,40 @@ apply_changes() {
     touch "$db_parent/.AppleSetupDone"
     rm -f "$config_path/.cloudConfigHasActivationRecord" "$config_path/.cloudConfigRecordFound"
     touch "$config_path/.cloudConfigProfileInstalled" "$config_path/.cloudConfigRecordNotFound"
-    info 'Local changes completed without a command error. New administrator: %s' "$username"
-    info 'This does not verify successful MDM removal, Secure Token/FileVault access, or release from the organization.'
+    print_success
+}
+
+print_success() {
+    local green='' cyan='' reset='' rule='────────────────────────────────────────────'
+    if [ -t 1 ] && [ "${TERM:-dumb}" != dumb ] && [ -z "${NO_COLOR:-}" ]; then
+        green=$'\033[1;32m'; cyan=$'\033[1;36m'; reset=$'\033[0m'
+    fi
+    printf '\n%s%s\n' "$green" "$rule"
+    message '  ✓ MDM bypass setup completed!\n'
+    printf '%s%s\n\n' "$rule" "$reset"
+    info '  Login username: %s' "$username"
+    info '  Password: the password you just entered'
+    info '  Configuration backup: %s' "$backup_dir"
+    printf '\n%s' "$cyan"
+    info 'Next steps:'
+    printf '%s' "$reset"
+    info '  1. Close this terminal window.'
+    info '  2. Restart your Mac from the Apple menu.'
+    info '  3. Sign in as %s with the password you just entered.' "$username"
+    printf '\n'
 }
 
 main() {
-    local apply=0 check_only=0 interactive=0 language_explicit=0 help_requested=0 target_dir required_group
+    local apply=0 check_only=0 interactive=0 targets_confirmed=0 help_requested=0 target_dir required_group
     language=zh
+    unset passw
     system_path=''; data_path=''; username=''; domain_profile=conservative
     while [ "$#" -gt 0 ]; do
         case "$1" in
             --lang)
                 [ "$#" -ge 2 ] && [ -n "$2" ] || fail 'Missing value for %s' "$1"
                 case "$2" in zh|en) language="$2" ;; *) fail 'Unknown language: %s. Use zh or en.' "$2" ;; esac
-                language_explicit=1; shift 2 ;;
+                shift 2 ;;
             --system|--data|--username|--domains)
                 [ "$#" -ge 2 ] && [ -n "$2" ] || fail 'Missing value for %s' "$1"
                 case "$1" in --system) system_path="$2" ;; --data) data_path="$2" ;; --username) username="$2" ;; --domains) domain_profile="$2" ;; esac
@@ -573,9 +565,7 @@ main() {
     [ "$(uname -s)" = Darwin ] || fail 'Run only on macOS; this script has not been validated on your Mac.'
     select_domains
     if [ -z "$system_path" ] || [ -z "$data_path" ] || [ -z "$username" ]; then
-        require_terminal
         interactive=1
-        if [ "$language_explicit" -eq 0 ]; then choose_language; fi
     fi
     if [ -z "$system_path" ]; then
         required_group=''
@@ -583,13 +573,13 @@ main() {
             data_path=$(canonical_mount "$data_path")
             required_group=$(volume_group_for_path "$data_path") || fail 'Cannot resolve selected Data volume group.'
         fi
-        choose_volume System "$required_group"
+        select_default_volume System "$required_group"
         system_path="$selected_volume_path"
     fi
     system_path=$(canonical_mount "$system_path")
     if [ -z "$data_path" ]; then
         required_group=$(volume_group_for_path "$system_path") || fail 'Cannot resolve selected System volume group.'
-        choose_volume Data "$required_group"
+        select_default_volume Data "$required_group"
         data_path="$selected_volume_path"
     fi
     data_path=$(canonical_mount "$data_path")
@@ -597,6 +587,9 @@ main() {
     validate_volumes
     validate_paths
     read_users
+    if [ -z "$username" ] || [ "$apply" -eq 1 ] || { [ "$interactive" -eq 1 ] && [ "$check_only" -eq 0 ]; }; then
+        info '\nAccount setup (written only if you choose to apply):'
+    fi
     if [ -z "$username" ]; then
         prompt_username
     fi
@@ -605,17 +598,24 @@ main() {
     available_uid=$(find_available_uid) || fail 'No free UID found; refusing fallback.'
     assert_uid_free
     check_hosts
+    # Keep account inputs together, before the summary and sole final decision.
+    # Explicit --check and fully specified read-only calls never request a password.
+    if [ "$apply" -eq 1 ] || { [ "$interactive" -eq 1 ] && [ "$check_only" -eq 0 ]; }; then
+        require_terminal
+        get_password
+    fi
     message '\nSystem: %s (%s)\nData:   %s (%s)\nAPFS group: %s\nNew admin: %s; UID: %s\nHosts: %s\nProfile: %s\n' "$system_path" "$expected_system" "$data_path" "$expected_data" "$expected_group" "$username" "$available_uid" "$hosts_file" "$domain_profile"
     message 'Selected domain: %s\n' "${domains[@]}"
     info 'Existing hosts entries are preserved; selecting fewer domains does not remove earlier blocks.'
     if [ "$interactive" -eq 1 ] && [ "$apply" -eq 0 ] && [ "$check_only" -eq 0 ]; then
         choose_action
         case "$selected_action" in
-            apply) apply=1 ;;
-            cancel) info 'Cancelled. No changes made.'; return 0 ;;
+            apply) apply=1; targets_confirmed=1 ;;
+            cancel) unset passw; info 'Cancelled. No changes made.'; return 0 ;;
         esac
     fi
     if [ "$apply" -eq 0 ]; then
+        unset passw
         info 'READ-ONLY PREFLIGHT COMPLETE. No files, accounts or volumes were changed.'
         return 0
     fi
@@ -623,9 +623,7 @@ main() {
     if [ "$domain_profile" = xiaohu-six ]; then
         info 'WARNING: six-domain profile blocks activation-related Apple services; acmdm.apple.com was not verified in current official documentation.'
     fi
-    info 'This creates a persistent administrator and edits offline system state. It does not grant Secure Token or volume ownership.'
-    confirm_targets
-    get_password
+    if [ "$targets_confirmed" -eq 0 ]; then confirm_targets; fi
     # No sleeping or user input between this recheck and the writes.
     validate_volumes
     validate_paths

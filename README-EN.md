@@ -39,7 +39,7 @@ ls /Volumes
 
 Identify the **System volume** and matching **Data volume** in the same APFS volume group. Both must be mounted. Use Disk Utility to mount or unlock them first if needed.
 
-The script lists mounted offline volumes. The first eligible System candidate is the default, followed by the first eligible Data candidate in the same APFS volume group. Each step displays the default path and device ID. Press Return to accept, or enter another number or a full mount path from the list. No eligible candidate means the script stops. Verify the target rather than relying on its name.
+The script automatically uses the first eligible mounted offline System volume and the first eligible Data volume in the same APFS group. There are no volume menus or Return prompts. The selected paths and device IDs are displayed; no eligible candidate means the script stops. Use `--system 'path' --data 'path'` for different targets, and review them before the final confirmation.
 
 ## 4. Download and run in one line
 
@@ -61,26 +61,26 @@ If your network can access GitHub downloads, use the project source directly:
 cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
 ```
 
-Both download methods use the same interactive flow. At startup, choose a language: Return or `1` selects Chinese (the default), `2` selects English, and `q` cancels. Then choose the System and Data volumes and enter a new username. The action menu offers:
+Both download methods use the same flow: Chinese by default, automatic System/Data matching, then username, password, and password confirmation together. A target summary and one final action menu follow:
 
 - `1` or Return: check only; no account or configuration changes.
-- `2`: enter the apply flow, including device-ID confirmation and password setup; these prompts also accept defaults with Return.
-- `q`: cancel; volume selection also accepts `q`.
+- `2`: confirm the displayed volumes and account, then apply changes without another disk confirmation.
+- `q`: cancel; Ctrl+C also cancels input prompts.
 
-Append `--check` to force check-only mode. Append `--apply` to skip the action menu and enter the apply flow; volume selection, username entry, disk confirmation, and password prompts still remain.
+Append `--check` for check-only mode without a password prompt. Append `--apply` to skip the action menu: enter the account details together, then confirm the target disks once at the end.
 
 | Prompt | Value used on Return | Custom input |
 |---|---|---|
-| Language | Chinese | Enter `2` for English |
-| System volume | First eligible listed volume | Enter another number or a full mount path from the list |
-| Data volume | First eligible volume in the System group | Enter another number or a full mount path from the list |
+| Language | Chinese automatically; no input | Append `--lang en` for English |
+| System volume | First eligible volume automatically; no input | Specify `--system 'path'` |
+| Data volume | First eligible volume in the System group automatically; no input | Specify `--data 'path'` |
 | Username | `apple` | Enter an unused new username |
-| Action | Check only | Enter `2` to apply |
-| Disk confirmation | Displayed `APPLY SystemDeviceID DataDeviceID` | Review and press Return, or type the exact confirmation; Ctrl+C cancels |
+| Final decision | Check only | Enter `2` to confirm targets and apply; `q` cancels |
+| Final confirmation with `--apply` | Displayed `APPLY SystemDeviceID DataDeviceID` | Review and press Return, or type the exact confirmation; Ctrl+C cancels |
 | Password | `1234` | Enter any custom password |
 | Repeat password | Password chosen in the previous step | Enter the same password again |
 
-Pressing Return throughout completes a read-only check. Disk confirmation and password setup appear only after `--apply` or action `2`. A default volume is simply the first eligible candidate; review it before accepting.
+Pressing Return throughout completes a read-only check. Standard mode collects account details first and discards the password if you choose check-only or cancel; `--check` skips password input entirely. Automatic selection uses the first eligible candidate, so review the targets before the final decision.
 
 If already downloaded, run it separately:
 
@@ -88,7 +88,7 @@ If already downloaded, run it separately:
 bash /tmp/bypass-mdm-v3.sh
 ```
 
-To choose a language directly and skip the language menu:
+Chinese is used directly with no startup language menu. Set English or explicitly choose Chinese with:
 
 ```bash
 bash /tmp/bypass-mdm-v3.sh --lang en
@@ -101,13 +101,11 @@ Files in `/tmp` may disappear after a restart. Download again if needed.
 
 ## 5. Complete the prompts
 
-1. Choose a language (Chinese by default), then review the System and matching Data volumes. Return accepts each displayed default; another number or a listed path selects a different candidate. If none is available, mount or unlock the volumes in Disk Utility and rerun.
-2. Press Return for username `apple`, or enter an unused name. Correct invalid or conflicting names when prompted; existing accounts are never reused or reset.
-3. Review the displayed paths, device identifiers, and username. Choose `2` to apply or `1` to check only.
-4. Review the two device IDs in the disk confirmation, then press Return to accept. You may instead type the exact text, such as `APPLY disk3s1 disk3s5`, using the identifiers displayed in this run. A mismatch stops execution; Ctrl+C cancels.
-5. Press Return for password `1234`, or enter any custom password. At the repeat prompt, Return confirms the password chosen in the previous step, or you can type the same password again. A mismatch requires retrying. Input remains hidden.
-6. Wait for completion. Investigate any error instead of treating it as success.
-7. Quit Terminal, restart using the Apple menu, and try signing in with the new credentials.
+1. The script uses Chinese by default and automatically matches System and Data volumes. Mount or unlock them and retry if none is available.
+2. Enter the username and password together. Return uses `apple` and `1234`, or enter custom values. Return again confirms the chosen password. Conflicting usernames must be changed; existing accounts are not reused.
+3. Review the paths, device IDs, and username. Enter `2` to confirm and apply, Return to check only, or `q` to cancel. With `--apply`, accept the final `APPLY …` prompt instead.
+4. Wait for “MDM bypass setup completed!” and “Next steps:”. Investigate any reported error first.
+5. Follow the next steps to close Terminal, restart, and sign in with the new account and chosen password. The completion summary includes the backup location and never displays a custom password.
 
 Username: 1–31 characters, starting with an ASCII letter, using only letters, digits, `_`, or `-`. It must not conflict with an existing account or home directory.
 
@@ -117,12 +115,12 @@ Password: defaults to `1234`. There are no strength checks for length, character
 
 | Argument | Usage |
 |---|---|
-| `--lang zh` / `--lang en` | Choose Chinese or English directly and skip startup language selection; Chinese is the default |
-| `--system 'path'` | Optional; omit to choose a System volume interactively |
-| `--data 'path'` | Optional; omit to choose a matching Data volume |
+| `--lang zh` / `--lang en` | Set Chinese or English; Chinese is the default and there is no language menu |
+| `--system 'path'` | Optional; omit to automatically select the first eligible System volume |
+| `--data 'path'` | Optional; omit to automatically select the first eligible matching Data volume |
 | `--username name` | Optional; omit for a prompt with default `apple`; account-conflict checks still apply |
-| `--check` | Force check-only mode; cannot be combined with `--apply` |
-| `--apply` | Enter the apply flow; disk confirmation and password input remain required |
+| `--check` | Check only without asking for a password; cannot be combined with `--apply` |
+| `--apply` | Enter account details together, then confirm the target disks once and apply |
 | `--domains conservative` | Default three-host selection; normally leave the default |
 | `--domains xiaohu-six` | Six-host selection including activation-related services; may affect normal activation. Switching back does not remove earlier blocks |
 | `--help` | Display help, e.g. `bash /tmp/bypass-mdm-v3.sh --help` |

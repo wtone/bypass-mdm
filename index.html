@@ -172,8 +172,8 @@
       <details>
         <summary><span data-i18n="options">更多选项</span><svg class="icon" aria-hidden="true"><use href="#i-chevron"/></svg></summary>
         <div class="option-fields">
-          <div><label for="runMode" data-i18n="modeLabel">运行方式</label><select id="runMode"><option value="interactive" data-i18n="interactive">交互菜单（默认）</option><option value="check" data-i18n="check">仅检查 · 不执行修改</option><option value="apply" data-i18n="apply">进入执行流程 · 仍需确认</option></select></div>
-          <div><label for="scriptLanguage" data-i18n="scriptLanguage">脚本语言</label><select id="scriptLanguage"><option value="auto" data-i18n="autoLanguage">启动时选择（默认中文）</option><option value="zh" data-i18n="chinese">中文 · 跳过语言选择</option><option value="en" data-i18n="english">English · Skip language selection</option></select></div>
+          <div><label for="runMode" data-i18n="modeLabel">运行方式</label><select id="runMode"><option value="interactive" data-i18n="interactive">账户设置 + 最后确认（默认）</option><option value="check" data-i18n="check">仅检查 · 不执行修改</option><option value="apply" data-i18n="apply">进入执行流程 · 仍需确认</option></select></div>
+          <div><label for="scriptLanguage" data-i18n="scriptLanguage">脚本语言</label><select id="scriptLanguage"><option value="auto" data-i18n="autoLanguage">默认中文（无语言菜单）</option><option value="zh" data-i18n="chinese">中文</option><option value="en" data-i18n="english">English</option></select></div>
         </div>
       </details>
       <details>
@@ -181,14 +181,14 @@
         <ol class="steps">
           <li><strong data-i18n="step1Title">备份、抹盘并重装 macOS</strong><p data-i18n="step1">先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。</p></li>
           <li><strong data-i18n="step2Title">安装后返回恢复模式</strong><p data-i18n="step2">安装完成后再次进入恢复模式，挂载或解锁目标系统卷及同组数据卷，打开「实用工具 → 终端」并连接网络。</p></li>
-          <li><strong data-i18n="step3Title">复制命令，按提示操作</strong><p data-i18n="step3">优先选择国内地址。粘贴命令后核对卷路径与设备编号；回车使用显示的默认值。操作菜单默认仅检查，输入 2 才执行修改。</p></li>
-          <li><strong data-i18n="step4Title">确认结果，再重启登录</strong><p data-i18n="step4">执行时可回车确认当前目标磁盘及密码。已有 apple 账户时需换用新名称。若发生错误，先记录报错和备份位置；完成后重启并尝试登录。</p></li>
+          <li><strong data-i18n="step3Title">复制命令，按提示操作</strong><p data-i18n="step3">优先选择国内地址。脚本默认中文并自动匹配同组卷；接着连续输入用户名、密码及密码确认，回车可用默认值。</p></li>
+          <li><strong data-i18n="step4Title">确认结果，再重启登录</strong><p data-i18n="step4">核对目标摘要，输入 2 确认执行，回车仅检查。看到完成提示和“下一步”后，关闭终端、重启并登录。已有 apple 账户需换名；报错时先记录错误及备份位置。</p></li>
         </ol>
         <p style="margin: 0 0 22px"><a class="text-link" id="readmeLink" href="https://github.com/wtone/bypass-mdm/blob/main/README.md" target="_blank" rel="noopener noreferrer"><span data-i18n="fullGuide">查看完整使用说明</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></p>
       </details>
     </section>
     <div class="defaults"><span><span data-i18n="defaultUser">默认用户名</span><b>apple</b></span><span><span data-i18n="defaultPassword">默认密码</span><b>1234</b></span><span><span data-i18n="defaultAction">默认操作</span><b data-i18n="checkShort">仅检查</b></span></div>
-    <p class="footnote" data-i18n="footnote">可输入任意自定义密码；默认密码较弱，建议登录后修改。脚本不解除激活锁或组织端设备归属，尚未在真实 Mac 恢复模式验证。</p>
+    <p class="footnote" data-i18n="footnote">可输入任意自定义密码；建议登录后修改默认密码。已有 apple 账户时，请换用全新用户名。</p>
   </main>
   <footer><span>wtone / bypass-mdm · MIT License</span><a href="https://github.com/wtone/bypass-mdm" target="_blank" rel="noopener noreferrer"><span data-i18n="openSource">开源项目</span><svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a></footer>
   <script>
@@ -204,14 +204,14 @@
         cdn: '国内地址', github: 'GitHub 地址', recommended: '推荐', download: '下载脚本', copy: '复制命令', copied: '已复制',
         cdnInfo: '国内 CDN 下载，适合无法访问 GitHub 的网络。', githubInfo: '从 GitHub 项目下载，需要能够访问 GitHub 下载服务。',
         copyNote: '在恢复模式中打开「实用工具 → 终端」后粘贴', copiedStatus: '命令已复制，可前往终端粘贴。', manual: '自动复制不可用，命令已选中，请按 ⌘C 或 Ctrl+C 复制。',
-        options: '更多选项', modeLabel: '运行方式', interactive: '交互菜单（默认）', check: '仅检查 · 不执行修改', apply: '进入执行流程 · 仍需确认',
-        scriptLanguage: '脚本语言', autoLanguage: '启动时选择（默认中文）', chinese: '中文 · 跳过语言选择', english: 'English · Skip language selection',
+        options: '更多选项', modeLabel: '运行方式', interactive: '账户设置 + 最后确认（默认）', check: '仅检查 · 不执行修改', apply: '进入执行流程 · 仍需确认',
+        scriptLanguage: '脚本语言', autoLanguage: '默认中文（无语言菜单）', chinese: '中文', english: 'English',
         guide: '安装与使用', step1Title: '备份、抹盘并重装 macOS', step1: '先备份数据。关机后长按电源键，进入「选项 → 继续」。用磁盘工具核对目标后抹掉宗卷组，再重新安装 macOS；抹盘会删除目标安装中的文件和账户。',
         step2Title: '安装后返回恢复模式', step2: '安装完成后再次进入恢复模式，挂载或解锁目标系统卷及同组数据卷，打开「实用工具 → 终端」并连接网络。',
-        step3Title: '复制命令，按提示操作', step3: '优先选择国内地址。粘贴命令后核对卷路径与设备编号；回车使用显示的默认值。操作菜单默认仅检查，输入 2 才执行修改。',
-        step4Title: '确认结果，再重启登录', step4: '执行时可回车确认当前目标磁盘及密码。已有 apple 账户时需换用新名称。若发生错误，先记录报错和备份位置；完成后重启并尝试登录。',
+        step3Title: '复制命令，按提示操作', step3: '优先选择国内地址。脚本默认中文并自动匹配同组卷；接着连续输入用户名、密码及密码确认，回车可用默认值。',
+        step4Title: '确认结果，再重启登录', step4: '核对目标摘要，输入 2 确认执行，回车仅检查。看到完成提示和“下一步”后，关闭终端、重启并登录。已有 apple 账户需换名；报错时先记录错误及备份位置。',
         fullGuide: '查看完整使用说明', defaultUser: '默认用户名', defaultPassword: '默认密码', defaultAction: '默认操作', checkShort: '仅检查', openSource: '开源项目',
-        footnote: '可输入任意自定义密码；默认密码较弱，建议登录后修改。脚本不解除激活锁或组织端设备归属，尚未在真实 Mac 恢复模式验证。',
+        footnote: '可输入任意自定义密码；建议登录后修改默认密码。已有 apple 账户时，请换用全新用户名。',
         nav: '主导航', commandSection: '命令复制', tablist: '下载地址', command: '终端命令', optionsSection: '使用选项和说明', repo: 'GitHub 项目'
       },
       en: {
@@ -219,14 +219,14 @@
         cdn: 'China CDN', github: 'GitHub', recommended: 'Recommended', download: 'Download', copy: 'Copy command', copied: 'Copied',
         cdnInfo: 'Mainland China CDN, for networks that cannot access GitHub.', githubInfo: 'Download from the GitHub project. Requires access to GitHub downloads.',
         copyNote: 'Open Utilities → Terminal in macOS Recovery, then paste', copiedStatus: 'Command copied. You can now paste it into Terminal.', manual: 'Automatic copy is unavailable. The command is selected; press ⌘C or Ctrl+C to copy.',
-        options: 'More options', modeLabel: 'Run mode', interactive: 'Interactive menu (default)', check: 'Check only · No changes', apply: 'Apply flow · Confirmation required',
-        scriptLanguage: 'Script language', autoLanguage: 'Choose at startup (Chinese by default)', chinese: '中文 · Skip language selection', english: 'English · Skip language selection',
+        options: 'More options', modeLabel: 'Run mode', interactive: 'Account setup + final decision (default)', check: 'Check only · No changes', apply: 'Apply flow · Confirmation required',
+        scriptLanguage: 'Script language', autoLanguage: 'Chinese by default (no language menu)', chinese: '中文', english: 'English',
         guide: 'Installation & usage', step1Title: 'Back up, erase, and reinstall macOS', step1: 'Back up your data first. Shut down, then hold the power button and choose Options → Continue. Verify the target in Disk Utility before erasing its volume group and reinstalling macOS. Erasing deletes files and accounts in that installation.',
         step2Title: 'Return to Recovery after installation', step2: 'Start Recovery again. Mount or unlock the offline System and matching Data volumes, open Utilities → Terminal, and connect to the internet.',
-        step3Title: 'Copy the command and follow the prompts', step3: 'Use the China CDN when GitHub is unavailable. Review the paths and device IDs before accepting defaults with Return. The action menu defaults to check only; choose 2 to apply changes.',
-        step4Title: 'Review the result, then restart and sign in', step4: 'During apply, Return accepts the displayed disks and password. Choose a new username if apple already exists. Record any error and backup path before retrying. After completion, restart and try signing in.',
+        step3Title: 'Copy the command and follow the prompts', step3: 'Use the China CDN when GitHub is unavailable. The script defaults to Chinese and automatically matches volume groups. Enter the username and password together; Return accepts defaults.',
+        step4Title: 'Review the result, then restart and sign in', step4: 'Review the summary and enter 2 to confirm and apply, or Return to check only. Follow the completion screen and Next steps to close Terminal, restart, and sign in. Choose a new name if apple exists; record errors and the backup path before retrying.',
         fullGuide: 'Read the full guide', defaultUser: 'Default username', defaultPassword: 'Default password', defaultAction: 'Default action', checkShort: 'Check only', openSource: 'Open source',
-        footnote: 'Any custom password is allowed. Change the weak default password after signing in. The script does not remove Activation Lock or organization-side ownership and has not been verified in real Mac Recovery.',
+        footnote: 'Any custom password is allowed. Change the default password after signing in. Choose an unused username if apple already exists.',
         nav: 'Main navigation', commandSection: 'Copy a command', tablist: 'Download source', command: 'Terminal command', optionsSection: 'Options and instructions', repo: 'GitHub repository'
       }
     };
