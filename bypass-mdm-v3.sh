@@ -5,7 +5,8 @@
 # Upstream commit: 60583be37d41f314cb04a99e260071fc31a2eaf4
 # Upstream SHA256: 1aa477aad2ee4b2dbf2e59214dee05b73c81b392d74f89ac341db77597a98256
 # Offline macOS volumes only. NOT verified on a real Mac; no guarantee of MDM removal.
-# Default: read-only preflight. --apply explicitly enables the upstream local changes.
+# No arguments: interactive selection and action menu (default: preflight).
+# Parameter mode remains read-only unless --apply or an interactive apply choice is used.
 set +x
 set -Eeuo pipefail
 export PATH=/usr/bin:/bin:/usr/sbin:/sbin
@@ -18,12 +19,18 @@ info() { printf '%s\n' "$*"; }
 usage() {
     cat <<'EOF'
 Usage (macOS Recovery, mounted/unlocked offline System and Data volumes):
+  bash bypass-mdm-v3.sh
+  bash bypass-mdm-v3.sh --check
   bash bypass-mdm-v3.sh --system '/Volumes/Your System' \
-    --data '/Volumes/Your Data' --username NEWNAME [--domains conservative|xiaohu-six] [--apply]
+    --data '/Volumes/Your Data' --username NEWNAME [--domains conservative|xiaohu-six] [--check|--apply]
 
-Without --apply: inspect volumes, account conflicts, UID and hosts; make no changes.
-With --apply: require root, recheck, confirm target IDs, back up affected files,
-create ONE NEW administrator, then apply the upstream hosts/setup-marker changes.
+Missing volumes or username: choose mounted offline volumes and enter a new username.
+Interactive mode then offers check only (default), apply, or cancel.
+--check: preflight only, even in interactive mode. --apply: enter the apply flow.
+With all target arguments and neither action flag: preflight only, as before.
+Apply requires root, rechecks, confirmation of target IDs, and a strong password.
+Apply backs up affected files, creates ONE NEW administrator, and then applies
+the upstream hosts/setup-marker changes.
 No volume rename, mounting, unlocking, security-policy changes or automatic reboot.
 
 conservative (default): the three enrollment hosts from upstream.
@@ -64,6 +71,112 @@ role_for_device() {
         ci=$((ci + 1))
     done
     return 1
+}
+
+require_terminal() {
+    [ -t 0 ] && [ -t 1 ] || fail 'Interactive input requires a terminal. Download the file and run it directly; do not pipe it into bash.'
+}
+
+volume_group_for_path() {
+    local xml group
+    xml=$(diskutil info -plist "$1") || fail 'Cannot inspect the selected volume.'
+    group=$(plist_value "$xml" APFSVolumeGroupID) || fail 'Selected volume has no APFS volume-group UUID.'
+    [[ "$group" =~ ^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$ ]] || fail 'Invalid selected APFS group UUID.'
+    printf '%s\n' "$group"
+}
+
+list_volume_candidates() {
+    local wanted_role="$1" required_group="$2" inventory boot boot_group ci=0 vi device role xml mount group
+    candidate_paths=(); candidate_devices=(); candidate_groups=()
+    candidate_count=0
+    inventory=$(diskutil apfs list -plist) || fail 'Cannot read APFS volume inventory.'
+    boot=$(diskutil info -plist /) || fail 'Cannot inspect the boot volume.'
+    boot_group=$(plist_value "$boot" APFSVolumeGroupID || true)
+    while plist_value "$inventory" "Containers.$ci.ContainerReference" >/dev/null; do
+        vi=0
+        while device=$(plist_value "$inventory" "Containers.$ci.Volumes.$vi.DeviceIdentifier"); do
+            vi=$((vi + 1))
+            [[ "$device" =~ ^disk[0-9]+s[0-9]+$ ]] || continue
+            role=$(role_for_device "$inventory" "$device") || continue
+            [ "$role" = "$wanted_role" ] || continue
+            xml=$(diskutil info -plist "$device") || continue
+            mount=$(plist_value "$xml" MountPoint) || continue
+            case "$mount" in /Volumes/*) ;; *) continue ;; esac
+            case "${mount#/Volumes/}" in ''|*/*) continue ;; esac
+            [ -d "$mount" ] || continue
+            group=$(plist_value "$xml" APFSVolumeGroupID) || continue
+            [[ "$group" =~ ^[A-Fa-f0-9]{8}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{4}-[A-Fa-f0-9]{12}$ ]] || continue
+            [ -z "$required_group" ] || [ "$group" = "$required_group" ] || continue
+            [ -z "$boot_group" ] || [ "$group" != "$boot_group" ] || continue
+            candidate_paths+=("$mount")
+            candidate_devices+=("$device")
+            candidate_groups+=("$group")
+            candidate_count=$((candidate_count + 1))
+        done
+        ci=$((ci + 1))
+    done
+}
+
+choose_volume() {
+    local wanted_role="$1" required_group="$2" choice index
+    require_terminal
+    list_volume_candidates "$wanted_role" "$required_group"
+    [ "$candidate_count" -gt 0 ] || fail "No mounted offline $wanted_role volume is available. Mount/unlock the correct volumes in Disk Utility, then rerun."
+    printf '\nSelect %s volume (q to cancel):\n' "$wanted_role"
+    for ((index=0; index<candidate_count; index++)); do
+        printf '  %s) %s [%s; group %s]\n' "$((index + 1))" "${candidate_paths[$index]}" "${candidate_devices[$index]}" "${candidate_groups[$index]}"
+    done
+    while true; do
+        IFS= read -r -p 'Volume number: ' choice || fail 'Volume selection interrupted.'
+        case "$choice" in q|Q) fail 'Cancelled. No changes made.' ;; esac
+        # Compare strings to the numbered choices; never evaluate untrusted arithmetic.
+        for ((index=0; index<candidate_count; index++)); do
+            if [ "$choice" = "$((index + 1))" ]; then
+                selected_volume_path="${candidate_paths[$index]}"
+                return 0
+            fi
+        done
+        info 'Enter a displayed volume number, or q to cancel. There is no default selection.'
+    done
+}
+
+prompt_username() {
+    require_terminal
+    while true; do
+        IFS= read -r -p 'New username (no default; Ctrl+C to cancel): ' username || fail 'Username input interrupted.'
+        if ! validate_username "$username"; then
+            info 'Use 1-31 ASCII letters/digits/_/-, beginning with a letter.'
+            continue
+        fi
+        # Run the existing hard-stop conflict checks in a subshell so a typing
+        # conflict can be corrected without weakening the final checks.
+        if (assert_new_account); then
+            return 0
+        fi
+        info 'Choose another NEW username; no existing account will be reused.'
+    done
+}
+
+choose_action() {
+    local choice
+    require_terminal
+    printf '\n1) Check only (default)\n2) Apply changes\nq) Cancel\n'
+    while true; do
+        IFS= read -r -p 'Action [1]: ' choice || fail 'Action selection interrupted.'
+        case "$choice" in
+            ''|1) selected_action=check; return 0 ;;
+            2) selected_action=apply; return 0 ;;
+            q|Q) selected_action=cancel; return 0 ;;
+            *) info 'Enter 1, 2, or q.' ;;
+        esac
+    done
+}
+
+confirm_targets() {
+    local answer
+    require_terminal
+    IFS= read -r -p "Type APPLY $expected_system $expected_data to confirm these exact target volumes: " answer || fail 'Target confirmation interrupted. No changes made.'
+    [ "$answer" = "APPLY $expected_system $expected_data" ] || fail 'Target confirmation did not match. No changes made.'
 }
 
 validate_volumes() {
@@ -254,9 +367,8 @@ apply_changes() {
 }
 
 main() {
-    local apply=0 answer target_dir
+    local apply=0 check_only=0 interactive=0 target_dir required_group
     system_path=''; data_path=''; username=''; domain_profile=conservative
-    [ "$#" -gt 0 ] || { usage; return 0; }
     while [ "$#" -gt 0 ]; do
         case "$1" in
             --system|--data|--username|--domains)
@@ -264,26 +376,56 @@ main() {
                 case "$1" in --system) system_path="$2" ;; --data) data_path="$2" ;; --username) username="$2" ;; --domains) domain_profile="$2" ;; esac
                 shift 2 ;;
             --apply) apply=1; shift ;;
+            --check) check_only=1; shift ;;
             --help|-h) usage; return 0 ;;
             *) fail "Unknown option: $1" ;;
         esac
     done
+    [ "$apply" -eq 0 ] || [ "$check_only" -eq 0 ] || fail '--check and --apply cannot be combined.'
     [ "$(uname -s)" = Darwin ] || fail 'Run only on macOS; this script has not been validated on your Mac.'
-    validate_username "$username" || fail 'Provide a NEW username: 1-31 ASCII letters/digits/_/-, beginning with a letter.'
+    select_domains
+    if [ -z "$system_path" ] || [ -z "$data_path" ] || [ -z "$username" ]; then
+        require_terminal
+        interactive=1
+    fi
+    if [ -z "$system_path" ]; then
+        required_group=''
+        if [ -n "$data_path" ]; then
+            data_path=$(canonical_mount "$data_path")
+            required_group=$(volume_group_for_path "$data_path") || fail 'Cannot resolve selected Data volume group.'
+        fi
+        choose_volume System "$required_group"
+        system_path="$selected_volume_path"
+    fi
     system_path=$(canonical_mount "$system_path")
+    if [ -z "$data_path" ]; then
+        required_group=$(volume_group_for_path "$system_path") || fail 'Cannot resolve selected System volume group.'
+        choose_volume Data "$required_group"
+        data_path="$selected_volume_path"
+    fi
     data_path=$(canonical_mount "$data_path")
     [ "$system_path" != "$data_path" ] || fail 'System and Data paths must differ.'
     validate_volumes
     validate_paths
     read_users
+    if [ -z "$username" ]; then
+        prompt_username
+    fi
+    validate_username "$username" || fail 'Provide a NEW username: 1-31 ASCII letters/digits/_/-, beginning with a letter.'
     assert_new_account
     available_uid=$(find_available_uid) || fail 'No free UID found; refusing fallback.'
     assert_uid_free
-    select_domains
     check_hosts
     printf '\nSystem: %s (%s)\nData:   %s (%s)\nAPFS group: %s\nNew admin: %s; UID: %s\nHosts: %s\nProfile: %s\n' "$system_path" "$expected_system" "$data_path" "$expected_data" "$expected_group" "$username" "$available_uid" "$hosts_file" "$domain_profile"
     printf 'Selected domain: %s\n' "${domains[@]}"
     info 'Existing hosts entries are preserved; selecting fewer domains does not remove earlier blocks.'
+    if [ "$interactive" -eq 1 ] && [ "$apply" -eq 0 ] && [ "$check_only" -eq 0 ]; then
+        choose_action
+        case "$selected_action" in
+            apply) apply=1 ;;
+            cancel) info 'Cancelled. No changes made.'; return 0 ;;
+        esac
+    fi
     if [ "$apply" -eq 0 ]; then
         info 'READ-ONLY PREFLIGHT COMPLETE. No files, accounts or volumes were changed.'
         return 0
@@ -293,8 +435,7 @@ main() {
         info 'WARNING: six-domain profile blocks activation-related Apple services; acmdm.apple.com was not verified in current official documentation.'
     fi
     info 'This creates a persistent administrator and edits offline system state. It does not grant Secure Token or volume ownership.'
-    IFS= read -r -p "Type APPLY $expected_system $expected_data to confirm these exact target volumes: " answer
-    [ "$answer" = "APPLY $expected_system $expected_data" ] || fail 'Target confirmation did not match. No changes made.'
+    confirm_targets
     get_password
     # No sleeping or user input between this recheck and the writes.
     validate_volumes

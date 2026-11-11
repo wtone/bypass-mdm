@@ -37,35 +37,41 @@ ls /Volumes
 
 Identify the **System volume** and matching **Data volume** in the same APFS volume group. Both must be mounted. Use Disk Utility to mount or unlock them first if needed.
 
-Common mount points are `/Volumes/Macintosh HD` and `/Volumes/Macintosh HD - Data`, but names can differ. **Replace both paths in the following commands with the actual mount points if they differ. Keep the quotes.**
+The script lists mounted offline volumes. Select a System volume by number, then a Data volume in the same APFS volume group. Even a single candidate requires an explicit selection; verify the intended target rather than relying on its name.
 
 ## 4. Download and run in one line
 
-After verifying the paths, paste this complete line into Terminal in Recovery. `NewAdmin` is the new username; replace it with another unused name if desired.
+Paste this complete line into Terminal in Recovery. No volume-path or username arguments need to be edited:
 
 ```bash
-cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh --system '/Volumes/Macintosh HD' --data '/Volumes/Macintosh HD - Data' --username NewAdmin --apply
+cd /tmp && curl -fsSL https://raw.githubusercontent.com/wtone/bypass-mdm/main/bypass-mdm-v3.sh -o bypass-mdm-v3.sh && chmod +x ./bypass-mdm-v3.sh && ./bypass-mdm-v3.sh
 ```
 
-This downloads the script and starts the apply flow. **You still need to confirm the target volumes and enter a new password at the prompts.**
+After downloading, choose the System and Data volumes and enter a new username. The action menu then offers:
 
-To check first without changing accounts or configuration, remove the final `--apply`. Review the output, then run the command with `--apply` when the targets are correct.
+- `1` or Return: check only; no account or configuration changes.
+- `2`: enter the apply flow, including exact device-ID confirmation and a strong password entered twice.
+- `q`: cancel; volume selection also accepts `q`.
+
+Append `--check` to force check-only mode. Append `--apply` to skip the action menu and enter the apply flow; volume selection, username entry, disk confirmation, and password prompts still remain.
 
 If already downloaded, run it separately:
 
 ```bash
-bash /tmp/bypass-mdm-v3.sh --system '/Volumes/Macintosh HD' --data '/Volumes/Macintosh HD - Data' --username NewAdmin --apply
+bash /tmp/bypass-mdm-v3.sh
 ```
 
 Files in `/tmp` may disappear after a restart. Download again if needed.
 
 ## 5. Complete the prompts
 
-1. Check the displayed System/Data volumes, device identifiers, and new username.
-2. Enter the exact requested confirmation, such as `APPLY disk3s1 disk3s5`. Use the identifiers displayed during this run.
-3. Enter the password twice. Input is hidden and there is no default password.
-4. Wait for completion. Investigate any error instead of treating it as success.
-5. Quit Terminal, restart using the Apple menu, and try signing in with the new credentials.
+1. Select a System volume by number, then a matching Data volume. If no candidate is available, mount or unlock the volumes in Disk Utility and rerun.
+2. Enter an unused username. Correct invalid or conflicting names when prompted.
+3. Review the displayed paths, device identifiers, and username. Choose `2` to apply or `1` to check only.
+4. Enter the exact requested confirmation, such as `APPLY disk3s1 disk3s5`. Use the identifiers displayed during this run.
+5. Enter the password twice. Input is hidden and there is no default password.
+6. Wait for completion. Investigate any error instead of treating it as success.
+7. Quit Terminal, restart using the Apple menu, and try signing in with the new credentials.
 
 Username: 1–31 characters, starting with an ASCII letter, using only letters, digits, `_`, or `-`. It must not conflict with an existing account or home directory.
 
@@ -75,22 +81,25 @@ Password: 16–128 characters, including uppercase and lowercase letters, a digi
 
 | Argument | Usage |
 |---|---|
-| `--system 'path'` | Required: complete target System-volume mount point |
-| `--data 'path'` | Required: complete mount point of the matching Data volume |
-| `--username name` | Required: new account name |
-| `--apply` | Apply changes; omit for checks only |
+| `--system 'path'` | Optional; omit to choose a System volume interactively |
+| `--data 'path'` | Optional; omit to choose a matching Data volume |
+| `--username name` | Optional; omit to enter a new username interactively |
+| `--check` | Force check-only mode; cannot be combined with `--apply` |
+| `--apply` | Enter the apply flow; disk confirmation and password input remain required |
 | `--domains conservative` | Default three-host selection; normally leave the default |
 | `--domains xiaohu-six` | Six-host selection including activation-related services; may affect normal activation. Switching back does not remove earlier blocks |
 | `--help` | Display help, e.g. `bash /tmp/bypass-mdm-v3.sh --help` |
 
 To select six hosts, append `--domains xiaohu-six` to the execution command.
 
+You can still specify all targets with `--system`, `--data`, and `--username`. Providing all three without `--apply` remains check-only. Interactive selection requires a terminal: download the file and run it directly instead of using `curl ... | bash`.
+
 ## 7. Troubleshooting
 
 | Problem | Action |
 |---|---|
 | Download fails | Check Recovery networking and access to `raw.githubusercontent.com`; later steps do not run if download fails |
-| Volume unmounted or path incorrect | Mount/unlock in Disk Utility, then check actual paths with `ls /Volumes` |
+| No available candidate, unmounted volume, or incorrect path | Mount/unlock in Disk Utility, then check actual paths with `ls /Volumes` |
 | Group, role, or device mismatch | Recheck the System/Data pair; do not remove validation to force execution |
 | Currently booted target rejected | Return to Recovery and operate on the offline installation |
 | Username, UID, or home conflict | Use an unused name; after an interrupted run, inspect any partially created account first |
